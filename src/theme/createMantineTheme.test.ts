@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
-import { test } from 'node:test'
+import { test } from 'vitest'
+import appStyles from '../App.css?raw'
+import globalStyles from '../index.css?raw'
 import { DEFAULT_THEME, defaultCssVariablesResolver, mergeMantineTheme } from '@mantine/core'
 import { createMantineTheme } from './createMantineTheme.ts'
 import { defaultTheme } from './defaultTheme.ts'
@@ -105,8 +106,7 @@ test('adapts a changed palette and dimensions without mutating the configuration
 test('provides every Guarni variable referenced by the current styles', () => {
   for (const config of [defaultTheme, exampleDarkTheme]) {
     const variables = getVariables(config)
-    for (const file of ['../index.css', '../App.css']) {
-      const css = readFileSync(new URL(file, import.meta.url), 'utf8')
+    for (const [file, css] of Object.entries({ 'index.css': globalStyles, 'App.css': appStyles })) {
       for (const [, name] of css.matchAll(/var\((--guarni-[\w-]+)\)/g)) {
         assert.ok(variables[name], `${config.colorScheme}: undefined ${name} in ${file}`)
       }

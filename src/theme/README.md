@@ -41,9 +41,10 @@ mantendo a escala padrão do navegador (16 px) e respeitando o zoom do usuário.
 
 Os testes de `npm run test:theme` verificam as duas configurações, o fallback,
 a adaptação, as variáveis usadas pelo CSS e contrastes mínimos de 4,5:1 para os
-pares de texto avaliados e 3:1 para foco e bordas. Eles usam o executor nativo do
-Node 24, sem dependências adicionais. Vitest e React Testing Library continuam
-previstos para a próxima etapa. Estes testes não substituem a revisão dos futuros
+pares de texto avaliados e 3:1 para foco e bordas. Eles usam Vitest; os testes do
+provider usam React Testing Library para conferir os tokens no DOM e a escolha
+de tema por código. Consulte a [base de testes](../test/README.md) para os comandos
+e o helper de renderização. Estes testes não substituem a revisão dos futuros
 componentes e seus estados na tela.
 
 Referências: [tema Mantine](https://mantine.dev/theming/theme-object/) e
