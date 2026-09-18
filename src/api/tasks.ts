@@ -6,6 +6,7 @@ export type TodayTask = {
   id: string;
   title: string;
   dueLabel: string;
+  dueTime?: string;
   evidenceLabel?: string;
   assigneeLabel: string;
   assignmentType: 'general' | 'personal';
@@ -24,6 +25,7 @@ export type TodayTask = {
 export type TodayTasksParams = {
   scope: TaskScope;
   search?: string;
+  status?: TaskStatus | 'all';
 };
 
 export type TodayTasksResponse = {
@@ -71,15 +73,15 @@ export type CorrectTaskExecutionInput = {
 };
 
 let historySequence = 6;
-let mockTodayTasks: TodayTask[] = [
-  { id: 'task-bench-cleaning', title: 'Higienizar bancada da cozinha', description: 'Limpe a superfície, os cantos e guarde os produtos após finalizar.', dueLabel: 'até 10:00', executionDateLabel: 'Hoje, 31 ago', evidenceLabel: 'Foto obrigatória', assigneeLabel: 'Você', assignmentType: 'personal', isAssignedToCurrentUser: true, canTakeOver: false, status: 'pending', isOverdue: true, timeline: [{ title: 'Tarefa atribuída', meta: '08:00 · Gerente' }] },
-  { id: 'task-freezer-temperature', title: 'Conferir temperatura dos freezers', description: 'Registre a temperatura exibida no painel principal.', dueLabel: 'até 15:00', executionDateLabel: 'Hoje, 31 ago', evidenceLabel: 'Evidência opcional', assigneeLabel: 'Você', assignmentType: 'personal', isAssignedToCurrentUser: true, canTakeOver: false, status: 'done', comment: 'Temperatura registrada: -18°C', evidenceName: 'freezer.jpg', completedByLabel: 'Você', timeline: [{ title: 'Tarefa concluída', meta: '15:02 · Você' }, { title: 'Tarefa atribuída', meta: '08:00 · Gerente' }] },
+const mockTodayTasks: TodayTask[] = [
+  { id: 'task-bench-cleaning', title: 'Higienizar bancada da cozinha', description: 'Limpe a superfície, os cantos e guarde os produtos após finalizar.', dueTime: '10:00', dueLabel: 'até 10:00', executionDateLabel: 'Hoje, 31 ago', evidenceLabel: 'Foto obrigatória', assigneeLabel: 'Você', assignmentType: 'personal', isAssignedToCurrentUser: true, canTakeOver: false, status: 'pending', isOverdue: true, timeline: [{ title: 'Tarefa atribuída', meta: '08:00 · Gerente' }] },
+  { id: 'task-freezer-temperature', title: 'Conferir temperatura dos freezers', description: 'Registre a temperatura exibida no painel principal.', dueTime: '15:00', dueLabel: 'até 15:00', executionDateLabel: 'Hoje, 31 ago', evidenceLabel: 'Evidência opcional', assigneeLabel: 'Você', assignmentType: 'personal', isAssignedToCurrentUser: true, canTakeOver: false, status: 'done', comment: 'Temperatura registrada: -18°C', evidenceName: 'freezer.jpg', completedByLabel: 'Você', timeline: [{ title: 'Tarefa concluída', meta: '15:02 · Você' }, { title: 'Tarefa atribuída', meta: '08:00 · Gerente' }] },
   { id: 'task-dry-storage', title: 'Organizar estoque seco', description: 'Organize os insumos por validade e mantenha corredores livres.', dueLabel: 'sem horário', executionDateLabel: 'Hoje, 31 ago', evidenceLabel: 'Foto opcional', assigneeLabel: 'Você', assignmentType: 'personal', isAssignedToCurrentUser: true, canTakeOver: false, status: 'pending' },
-  { id: 'task-dining-room', title: 'Limpar salão antes da abertura', dueLabel: 'até 11:00', executionDateLabel: 'Hoje, 31 ago', assigneeLabel: 'Geral', assignmentType: 'general', isAssignedToCurrentUser: false, canTakeOver: false, status: 'pending' },
-  { id: 'task-opening-checklist', title: 'Conferir checklist de abertura', dueLabel: 'até 09:00', executionDateLabel: 'Hoje, 31 ago', assigneeLabel: 'Geral', assignmentType: 'general', isAssignedToCurrentUser: false, canTakeOver: false, status: 'done', completedByLabel: 'Marina Souza', comment: 'Abertura conferida sem divergências.', timeline: [{ title: 'Tarefa concluída', meta: '08:55 · Marina Souza' }] },
-  { id: 'task-trash-area', title: 'Higienizar área de descarte', dueLabel: 'até 18:00', executionDateLabel: 'Hoje, 31 ago', assigneeLabel: 'Geral', assignmentType: 'general', isAssignedToCurrentUser: false, canTakeOver: false, status: 'notDone', comment: 'Área bloqueada para manutenção.' },
-  { id: 'task-sauce-expiration', title: 'Conferir validade dos molhos', dueLabel: 'até 14:00', executionDateLabel: 'Hoje, 31 ago', assigneeLabel: 'Marina Souza', assignmentType: 'personal', isAssignedToCurrentUser: false, canTakeOver: true, status: 'done', completedByLabel: 'Marina Souza', timeline: [{ title: 'Tarefa concluída', meta: '13:40 · Marina Souza' }] },
-  { id: 'task-cash-closing', title: 'Fotografar fechamento do caixa', dueLabel: 'até 23:30', executionDateLabel: 'Hoje, 31 ago', evidenceLabel: 'Foto obrigatória', assigneeLabel: 'Rafael Lima', assignmentType: 'personal', isAssignedToCurrentUser: false, canTakeOver: true, status: 'done', evidenceName: 'fechamento-caixa.jpg', completedByLabel: 'Rafael Lima', timeline: [{ title: 'Tarefa concluída', meta: '23:24 · Rafael Lima' }] },
+  { id: 'task-dining-room', title: 'Limpar salão antes da abertura', dueTime: '11:00', dueLabel: 'até 11:00', executionDateLabel: 'Hoje, 31 ago', assigneeLabel: 'Geral', assignmentType: 'general', isAssignedToCurrentUser: false, canTakeOver: false, status: 'pending' },
+  { id: 'task-opening-checklist', title: 'Conferir checklist de abertura', dueTime: '09:00', dueLabel: 'até 09:00', executionDateLabel: 'Hoje, 31 ago', assigneeLabel: 'Geral', assignmentType: 'general', isAssignedToCurrentUser: false, canTakeOver: false, status: 'done', completedByLabel: 'Marina Souza', comment: 'Abertura conferida sem divergências.', timeline: [{ title: 'Tarefa concluída', meta: '08:55 · Marina Souza' }] },
+  { id: 'task-trash-area', title: 'Higienizar área de descarte', dueTime: '18:00', dueLabel: 'até 18:00', executionDateLabel: 'Hoje, 31 ago', assigneeLabel: 'Geral', assignmentType: 'general', isAssignedToCurrentUser: false, canTakeOver: false, status: 'notDone', comment: 'Área bloqueada para manutenção.' },
+  { id: 'task-sauce-expiration', title: 'Conferir validade dos molhos', dueTime: '14:00', dueLabel: 'até 14:00', executionDateLabel: 'Hoje, 31 ago', assigneeLabel: 'Marina Souza', assignmentType: 'personal', isAssignedToCurrentUser: false, canTakeOver: true, status: 'done', completedByLabel: 'Marina Souza', timeline: [{ title: 'Tarefa concluída', meta: '13:40 · Marina Souza' }] },
+  { id: 'task-cash-closing', title: 'Fotografar fechamento do caixa', dueTime: '23:30', dueLabel: 'até 23:30', executionDateLabel: 'Hoje, 31 ago', evidenceLabel: 'Foto obrigatória', assigneeLabel: 'Rafael Lima', assignmentType: 'personal', isAssignedToCurrentUser: false, canTakeOver: true, status: 'done', evidenceName: 'fechamento-caixa.jpg', completedByLabel: 'Rafael Lima', timeline: [{ title: 'Tarefa concluída', meta: '23:24 · Rafael Lima' }] },
 ];
 
 
@@ -121,8 +123,14 @@ export async function getTodayTasks(params: TodayTasksParams): Promise<TodayTask
   const tasks = mockTodayTasks.filter((task) => {
     const matchesScope = params.scope === 'all' || (params.scope === 'mine' && task.isAssignedToCurrentUser) || (params.scope === 'general' && task.assignmentType === 'general');
     const matchesSearch = !search || `${task.title} ${task.assigneeLabel}`.toLocaleLowerCase('pt-BR').includes(search);
-    return matchesScope && matchesSearch;
+    const matchesStatus = !params.status || params.status === 'all' || task.status === params.status;
+    return matchesScope && matchesSearch && matchesStatus;
   });
+
+  const statusOrder: Record<TaskStatus, number> = { pending: 0, notDone: 1, done: 2 };
+  // ISO HH:mm sorts chronologically; tasks without a deadline follow timed tasks.
+  tasks.sort((a, b) => statusOrder[a.status] - statusOrder[b.status]
+    || (a.dueTime ?? '24:00').localeCompare(b.dueTime ?? '24:00'));
 
   const summary = mockTodayTasks.reduce(
     (acc, task) => ({ ...acc, [task.status]: acc[task.status] + 1 }),

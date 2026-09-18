@@ -51,9 +51,10 @@ const taskStatusPresentation: Record<TaskStatus, { label: string; tone: 'pending
 
 function TodayTasksView({ navigate, initialScope = 'mine' }: { navigate: Navigate; initialScope?: TaskScope }) {
   const [scope, setScope] = useState<TaskScope>(initialScope);
+  const [status, setStatus] = useState<TaskStatus | 'all'>('all');
   const [search, setSearch] = useState('');
   const setSelectedTaskId = useTaskStore((state) => state.setSelectedTaskId);
-  const { data, isLoading } = useTodayTasksQuery({ scope, search });
+  const { data, isLoading } = useTodayTasksQuery({ scope, search, status });
   const tasks = data?.tasks ?? [];
 
   const handleTabChange = (tab: string) => {
@@ -75,6 +76,16 @@ function TodayTasksView({ navigate, initialScope = 'mine' }: { navigate: Navigat
         )}
 
         <Tabs items={['Minhas', 'Gerais', 'Todas']} active={tabByScope[scope]} onChange={handleTabChange} />
+
+        <FormField label="Filtrar por status">
+          <Select ariaLabel="Filtrar por status" value={status} onChange={(value) => setStatus(value as TaskStatus | 'all')} options={[
+            { value: 'all', label: 'Todos os status' },
+            { value: 'pending', label: 'Pendentes' },
+            { value: 'notDone', label: 'Não feitas' },
+            { value: 'done', label: 'Concluídas' },
+          ]} />
+        </FormField>
+        <Text size="xs" tone="muted">Pendentes primeiro, por horário limite. Concluídas no final.</Text>
 
         {scope === 'all' && <SearchField placeholder="Buscar tarefa ou responsável" value={search} onChange={setSearch} />}
 

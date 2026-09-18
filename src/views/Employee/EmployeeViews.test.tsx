@@ -19,6 +19,27 @@ afterEach(() => {
   useTaskStore.setState(useTaskStore.getInitialState(), true)
 })
 
+it('combines status with the existing tabs and search, retaining status when changing tabs', async () => {
+  const fetch = vi.spyOn(api, 'getTodayTasks')
+  const user = userEvent.setup()
+  render(<QueryClientProvider client={context.queryClient}><EmployeeView route={routes.tasks.today} navigate={vi.fn()} /></QueryClientProvider>)
+  const status = screen.getByRole('combobox', { name: 'Filtrar por status' })
+  expect(status).toHaveValue('all')
+  await user.selectOptions(status, 'notDone')
+  expect(await screen.findByText('Nenhuma tarefa encontrada')).toBeVisible()
+  await user.click(screen.getByRole('radio', { name: 'Gerais' }))
+  expect(await screen.findByText('Higienizar área de descarte')).toBeVisible()
+  expect(status).toHaveValue('notDone')
+  await user.click(screen.getByRole('radio', { name: 'Todas' }))
+  await user.selectOptions(status, 'done')
+  await user.type(screen.getByPlaceholderText('Buscar tarefa ou responsável'), 'freezer')
+  await waitFor(() => expect(fetch).toHaveBeenLastCalledWith({ scope: 'all', search: 'freezer', status: 'done' }))
+  expect(await screen.findByText('Conferir temperatura dos freezers')).toBeVisible()
+  await user.clear(screen.getByPlaceholderText('Buscar tarefa ou responsável'))
+  await user.selectOptions(status, 'all')
+  expect(await screen.findByText('Higienizar bancada da cozinha')).toBeVisible()
+})
+
 it.each([
   ['pending', false, routes.tasks.pendingDetails],
   ['done', false, routes.tasks.completedDetails],
