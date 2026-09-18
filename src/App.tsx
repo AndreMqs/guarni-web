@@ -31,10 +31,13 @@ function App() {
 
   return (
     <LoginView
-      onSubmit={async (credentials) => {
-        const response = await loginMutation.mutateAsync(credentials);
-        setInitialRoute(getInitialRoute(credentials.username));
-        setAccessToken(response.accessToken);
+      onSubmit={(credentials) => {
+        loginMutation.mutate(credentials, {
+          onSuccess: (response) => {
+            setInitialRoute(getInitialRoute(credentials.username));
+            setAccessToken(response.accessToken);
+          },
+        });
       }}
       isSubmitting={loginMutation.isPending}
       submitError={loginMutation.isError ? loginPageText.genericSubmitError : undefined}
