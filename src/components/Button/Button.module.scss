@@ -1,0 +1,30 @@
+.root {
+  font-weight: var(--mantine-font-weight-semibold);
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.primary {
+  color: var(--guarni-on-primary);
+  background: var(--guarni-primary);
+  border-color: transparent;
+
+  &:hover:not(:disabled) {
+    background: var(--guarni-primary-hover);
+  }
+}
+
+.secondary {
+  color: var(--guarni-text);
+  background: var(--guarni-surface);
+  border-color: var(--guarni-border);
+
+  &:hover:not(:disabled) {
+    background: var(--guarni-surface-hover);
+  }
+}
