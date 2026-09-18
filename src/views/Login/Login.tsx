@@ -81,6 +81,13 @@ export function LoginView({ isSubmitting = false, submitError, onSubmit }: Login
             <Text weight={700}>{loginPageText.demoPassword}.</Text>
           </Group>
 
+          <Group gap={4} className={styles.demoHint}>
+            <Text>Demonstração de funcionário:</Text>
+            <Text weight={700}>{loginPageText.employeeDemoUsername}</Text>
+            <Text>{loginPageText.demoPasswordConnector}</Text>
+            <Text weight={700}>{loginPageText.demoPassword}.</Text>
+          </Group>
+
           <Text component="p" className={styles.accessNote}>{loginPageText.accessNote}</Text>
         </Box>
 

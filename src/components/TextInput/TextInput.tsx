@@ -6,10 +6,11 @@ export function TextInput({ value, defaultValue, placeholder, readOnly = false, 
     <MantineTextInput
       label={label}
       required={required}
-      value={onChange ? value : undefined}
-      defaultValue={!onChange ? (value ?? defaultValue) : undefined}
+      value={value}
+      defaultValue={value === undefined ? defaultValue : undefined}
       placeholder={placeholder}
       readOnly={readOnly}
+      styles={readOnly ? { input: { backgroundColor: 'var(--mantine-color-gray-1)', color: 'var(--mantine-color-dimmed)', cursor: 'default' } } : undefined}
       type={type}
       onChange={(event) => onChange?.(event.currentTarget.value)}
       disabled={disabled}

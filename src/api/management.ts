@@ -109,7 +109,7 @@ export type CurrentDaySummaryResponse = {
   closingLabel: string;
   remainingTimeLabel: string;
   summary: { done: number; pending: number; overdue: number; completionRate: number };
-  attentionTask: { title: string; dueLabel: string; assignee: string };
+  attentionTask: { id: string; title: string; dueLabel: string; assignee: string };
   pendingTasks: Array<{ id: string; title: string; dueLabel: string; assignee: string; evidenceLabel?: string }>;
 };
 
@@ -148,6 +148,27 @@ export type HistoryTaskDetails = HistoryDayTask & {
   evidenceLabel: string;
   timeline: Array<{ title: string; meta: string }>;
 };
+
+export type CurrentDayTaskDetails = {
+  id: string;
+  title: string;
+  assignee: string;
+  dueLabel: string;
+  isOverdue: boolean;
+  evidenceLabel: string;
+  timeline: Array<{ title: string; meta: string }>;
+};
+
+const mockCurrentDayTasks: CurrentDayTaskDetails[] = [
+  { id: 'attention-1', title: 'Higienizar área de atendimento', dueLabel: '22:00', assignee: 'Marina Souza', isOverdue: true, evidenceLabel: 'Nenhuma evidência enviada', timeline: [{ title: 'Prazo de execução ultrapassado', meta: '22:00 · Tarefa ainda pendente' }, { title: 'Tarefa atribuída', meta: '18:00 · Marina Souza' }, { title: 'Tarefa cadastrada', meta: '17:30 · Gerente' }] },
+  { id: 'pending-1', title: 'Conferir fechamento dos freezers', dueLabel: 'até 01:30', assignee: 'Rafael Lima', isOverdue: false, evidenceLabel: 'Nenhuma evidência enviada', timeline: [{ title: 'Tarefa atribuída', meta: '18:00 · Rafael Lima' }, { title: 'Tarefa cadastrada', meta: '17:30 · Gerente' }] },
+  { id: 'pending-2', title: 'Organizar estoque seco', dueLabel: 'até 02:00', assignee: 'Geral', isOverdue: false, evidenceLabel: 'Nenhuma evidência enviada', timeline: [{ title: 'Tarefa disponibilizada para a equipe', meta: '17:30 · Gerente' }] },
+];
+
+export async function getCurrentDayTask(taskId: string): Promise<CurrentDayTaskDetails | undefined> {
+  const task = mockCurrentDayTasks.find(item => item.id === taskId);
+  return task ? { ...task, timeline: task.timeline.map(event => ({ ...event })) } : undefined;
+}
 
 let taskSequence = 7;
 let userSequence = 9;
@@ -252,7 +273,7 @@ export async function getAssignableUsers(search = ''): Promise<ManagementUser[]>
   const normalizedSearch = normalizeSearch(search);
   return Promise.resolve(
     mockUsers
-      .filter((user) => user.isActive && user.role !== 'Dono')
+      .filter((user) => user.isActive)
       .filter((user) => !normalizedSearch || `${user.name} ${user.username}`.toLocaleLowerCase('pt-BR').includes(normalizedSearch))
       .map((user) => ({ ...user })),
   );
@@ -325,7 +346,7 @@ export async function copyTask(input: CopyTaskInput): Promise<ManagementTask> {
     assigneeId: input.assigneeId,
     assigneeName: input.assigneeName,
     executionDate: input.executionDate,
-    dueTime: source.dueTime ?? '10:00',
+    dueTime: source.dueTime ?? '',
     isEvidenceRequired: input.isEvidenceRequired,
     isCommentEnabled: source.isCommentEnabled ?? true,
   });
@@ -440,10 +461,7 @@ export async function getCurrentDaySummary(): Promise<CurrentDaySummaryResponse>
     closingLabel: 'Fecha às 03:00',
     remainingTimeLabel: 'faltam 2h 18m',
     summary: { done: 14, pending: 3, overdue: 1, completionRate: 78 },
-    attentionTask: { title: 'Higienizar área de atendimento', dueLabel: '22:00', assignee: 'Marina Souza' },
-    pendingTasks: [
-      { id: 'pending-1', title: 'Conferir fechamento dos freezers', dueLabel: 'até 01:30', assignee: 'Rafael Lima' },
-      { id: 'pending-2', title: 'Organizar estoque seco', dueLabel: 'até 02:00', assignee: 'Geral', evidenceLabel: 'sem responsável' },
-    ],
+    attentionTask: { ...mockCurrentDayTasks[0] },
+    pendingTasks: mockCurrentDayTasks.slice(1).map(task => ({ ...task })),
   });
 }

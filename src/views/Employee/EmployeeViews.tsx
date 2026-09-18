@@ -11,6 +11,7 @@ import {
   Frame,
   Group,
   MediaPlaceholder,
+  MenuCard,
   Notice,
   SearchField,
   Select,
@@ -34,8 +35,9 @@ import {
   useMarkTaskNotDoneMutation,
   useTakeOverTaskMutation,
   useTodayTasksQuery,
+  useCurrentUserContextQuery,
 } from '../../hooks';
-import { routes, type AppRoute, type Navigate } from '../../navigation';
+import { routes, type AppRoute, type Navigate, type NavigationMode } from '../../navigation';
 import { useTaskStore } from '../../stores';
 
 const scopeByTab: Record<string, TaskScope> = { Minhas: 'mine', Gerais: 'general', Todas: 'all' };
@@ -387,8 +389,21 @@ function EmptyTasksView({ navigate }: { navigate: Navigate }) {
   );
 }
 
-export function EmployeeView({ route, navigate }: { route: AppRoute; navigate: Navigate }) {
+function TaskMenuView({ navigate, navMode, onLogout }: { navigate: Navigate; navMode: NavigationMode; onLogout?: () => void }) {
+  const { data: user } = useCurrentUserContextQuery();
+  return <Frame title="Mais" navigate={navigate} bottomNav="more">
+    <Stack>
+      <Title order={2}>{user?.name ?? 'Minha conta'}</Title>
+      <Text tone="muted">{user?.roleLabel}</Text>
+      {navMode !== 'employee' && <MenuCard icon="‹" title="Voltar à gestão" subtitle="Painel e configurações da unidade" onClick={() => navigate(routes.management.dashboard)} />}
+      <MenuCard icon="↪" title="Sair" subtitle="Encerrar esta sessão" onClick={onLogout} />
+    </Stack>
+  </Frame>;
+}
+
+export function EmployeeView({ route, navigate, navMode = 'employee', onLogout }: { route: AppRoute; navigate: Navigate; navMode?: NavigationMode; onLogout?: () => void }) {
   switch (route) {
+    case routes.tasks.menu: return <TaskMenuView navigate={navigate} navMode={navMode} onLogout={onLogout} />;
     case routes.tasks.today: return <TodayTasksView navigate={navigate} />;
     case routes.tasks.all: return <TodayTasksView navigate={navigate} initialScope="all" />;
     case routes.tasks.pendingDetails: return <PendingTaskDetailsView navigate={navigate} />;

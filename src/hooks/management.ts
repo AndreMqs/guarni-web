@@ -6,6 +6,7 @@ import {
   createUser,
   getAssignableUsers,
   getCurrentDaySummary,
+  getCurrentDayTask,
   getHistoryDay,
   getHistoryTask,
   getManagementDashboard,
@@ -47,6 +48,7 @@ export const managementQueryKeys = {
   historyDay: (filters: HistoryDayFilters) => [...managementQueryKeys.all, 'history-day', filters] as const,
   dashboard: (unitId: string) => [...managementQueryKeys.all, 'dashboard', unitId] as const,
   currentDaySummary: () => [...managementQueryKeys.all, 'current-day-summary'] as const,
+  currentDayTask: (taskId: string) => [...managementQueryKeys.all, 'current-day-task', taskId] as const,
   historyTask: (taskId: string) => [...managementQueryKeys.all, 'history-task', taskId] as const,
   unitSettings: () => [...managementQueryKeys.all, 'unit-settings'] as const,
 };
@@ -89,6 +91,10 @@ export function useManagementHistoryQuery(month: string) {
 
 export function useCurrentDaySummaryQuery() {
   return useQuery({ queryKey: managementQueryKeys.currentDaySummary(), queryFn: getCurrentDaySummary });
+}
+
+export function useCurrentDayTaskQuery(taskId: string) {
+  return useQuery({ queryKey: managementQueryKeys.currentDayTask(taskId), queryFn: () => getCurrentDayTask(taskId), enabled: Boolean(taskId) });
 }
 
 export function useHistoryDayQuery(filters: HistoryDayFilters) {

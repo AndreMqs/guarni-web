@@ -38,6 +38,7 @@ import {
   useCreateTaskMutation,
   useCreateUserMutation,
   useCurrentDaySummaryQuery,
+  useCurrentDayTaskQuery,
   useHistoryDayQuery,
   useHistoryTaskQuery,
   useManagementDashboardQuery,
@@ -90,8 +91,9 @@ function ManagerDashboardView({ navigate, isUnitSelectionOpen = false, navMode }
   }, [activeUnitId]);
 
   return (
-    <Frame title={data?.activeUnit.name ?? 'Unidade'} action="TROCAR" onAction={() => navigate(routes.management.unitSelection)} navigate={navigate} bottomNav="today" navMode={navMode}>
+    <Frame title={data?.activeUnit.name ?? 'Unidade'} action={data && data.units.length > 1 ? 'TROCAR' : undefined} onAction={() => navigate(routes.management.unitSelection)} navigate={navigate} bottomNav="today" navMode={navMode}>
       <Stack gap="lg">
+        <MenuCard icon="✓" title="Executar tarefas" subtitle="Minhas tarefas, tarefas gerais e assumir atividades" onClick={() => navigate(routes.tasks.today)} />
         {isLoading ? <Text tone="muted">Carregando painel…</Text> : data && (
           <>
             <Group justify="space-between" align="flex-start" wrap="nowrap">
@@ -135,6 +137,7 @@ function ManagementMenuView({ navigate, onLogout }: { navigate: Navigate; onLogo
   return (
     <Frame title="Mais" navigate={navigate} bottomNav="more" navMode="management">
       <Stack gap="lg">
+        <MenuCard icon="✓" title="Executar tarefas" subtitle="Assumir e concluir tarefas da unidade" onClick={() => navigate(routes.tasks.today)} />
         <Card>
           <Group justify="space-between" wrap="nowrap">
             <Group wrap="nowrap"><Avatar initials={initials} /><Stack gap={0}><Text weight={700}>{data?.userName ?? 'Carregando…'}</Text><Text size="xs" tone="muted">{data ? `${data.roleLabel} · ${data.activeUnit.name}` : ''}</Text></Stack></Group>
@@ -248,15 +251,19 @@ function TaskDateFormView({ navigate }: { navigate: Navigate }) {
 function TaskRulesFormView({ navigate }: { navigate: Navigate }) {
   const taskDraft = useManagementStore((state) => state.taskDraft);
   const updateTaskDraft = useManagementStore((state) => state.updateTaskDraft);
+  const { data: settings, isError } = useUnitSettingsQuery();
+  const dueTime = taskDraft.dueTime || settings?.closingTime || '';
   return (
     <Frame title="Cadastrar tarefa" backTo={routes.management.taskCreateDate} navigate={navigate}>
       <Stack gap="lg">
         <Text size="xs">Etapa 3 de 3</Text><ProgressBar value={100} /><Title order={2}>Regras de execução</Title>
-        <FormField label="Horário limite"><TextInput type="time" value={taskDraft.dueTime} onChange={(dueTime) => updateTaskDraft({ dueTime })} /></FormField>
+        <TextInput label="Horário limite" type="time" value={dueTime} onChange={(dueTime) => updateTaskDraft({ dueTime })} />
+        <Text size="xs" tone="muted">Por padrão, usamos o horário de fechamento da unidade.</Text>
+        {isError && <Notice tone="danger">Não foi possível carregar o horário de fechamento.</Notice>}
         <ToggleRow title="Evidência obrigatória" subtitle="Exigir uma foto para concluir" enabled={taskDraft.isEvidenceRequired} onChange={(isEvidenceRequired) => updateTaskDraft({ isEvidenceRequired })} />
         <ToggleRow title="Comentário do executor" subtitle="Campo opcional na conclusão" enabled={taskDraft.isCommentEnabled} onChange={(isCommentEnabled) => updateTaskDraft({ isCommentEnabled })} />
         <Text size="xs" tone="muted">Se a evidência não for obrigatória, a tarefa poderá ser concluída sem mídia. “Não feita” sempre exige justificativa.</Text>
-        <Button isFullWidth onClick={() => navigate(routes.management.taskCreateReview)}>✓ &nbsp; REVISAR TAREFA</Button>
+        <Button isFullWidth disabled={!dueTime} onClick={() => { updateTaskDraft({ dueTime }); navigate(routes.management.taskCreateReview); }}>✓ &nbsp; REVISAR TAREFA</Button>
         <Button variant="secondary" isFullWidth onClick={() => navigate(routes.management.taskCreateDate)}>VOLTAR</Button>
       </Stack>
     </Frame>
@@ -365,8 +372,8 @@ function CreateUserView({ navigate }: { navigate: Navigate }) {
 function EditUserView({ navigate }: { navigate: Navigate }) {
   const userId = useManagementStore((state) => state.selectedUserId);
   const { data: user } = useUserQuery(userId);
-  const [role, setRole] = useState<ManagementRole>('Funcionário');
-  const [isActive, setIsActive] = useState(true);
+  const [draftRole, setRole] = useState<ManagementRole>();
+  const role = draftRole ?? (user?.role === 'Funcionária' ? 'Funcionário' : user?.role) ?? 'Funcionário';
   const mutation = useUpdateUserMutation();
   const roles: Array<{ title: ManagementRole; subtitle: string }> = [
     { title: 'Funcionário', subtitle: 'Executa e consulta tarefas' },
@@ -374,16 +381,9 @@ function EditUserView({ navigate }: { navigate: Navigate }) {
     { title: 'Dono', subtitle: 'Inclui permissões de auditoria de negócio' },
   ];
 
-  useEffect(() => {
+  const save = () => {
     if (!user) return;
-    setRole(user.role === 'Funcionária' ? 'Funcionário' : user.role);
-    setIsActive(user.isActive);
-  }, [user]);
-
-  const save = async () => {
-    if (!user) return;
-    await mutation.mutateAsync({ userId: user.id, role, isActive });
-    navigate(routes.management.users);
+    mutation.mutate({ userId: user.id, role, isActive: user.isActive }, { onSuccess: () => navigate(routes.management.users) });
   };
 
   return (
@@ -394,11 +394,11 @@ function EditUserView({ navigate }: { navigate: Navigate }) {
           <Text size="sm" weight={600}>Papel na unidade</Text>
           {roles.map((item) => <SelectionCard key={item.title} icon={role === item.title ? '✓' : '○'} title={item.title} subtitle={item.subtitle} isSelected={role === item.title} onClick={() => setRole(item.title)} />)}
         </Stack>
-        <ToggleRow title="Usuário ativo" subtitle="Pode acessar esta unidade" enabled={isActive} onChange={setIsActive} />
+        {user && <StatusBadge tone={user.isActive ? 'done' : 'neutral'}>{user.isActive ? 'Usuário ativo' : 'Usuário inativo'}</StatusBadge>}
         <Text size="xs" tone="muted">Papéis não são cumulativos. A interface e as permissões seguem o papel selecionado.</Text>
         {mutation.isError && <Notice tone="danger">Não foi possível salvar o usuário.</Notice>}
         <Button isFullWidth isLoading={mutation.isPending} disabled={!user} onClick={() => void save()}>SALVAR USUÁRIO</Button>
-        {user?.isActive && <Button variant="secondary" isFullWidth onClick={() => navigate(routes.management.userReassignment)}>DESATIVAR ACESSO</Button>}
+        {user && <Button variant="secondary" isFullWidth disabled={mutation.isPending} onClick={() => navigate(user.isActive ? routes.management.userReassignment : routes.management.userReactivation)}>{user.isActive ? 'DESATIVAR ACESSO' : 'REATIVAR ACESSO'}</Button>}
       </Stack>
     </Frame>
   );
@@ -416,13 +416,17 @@ function UserReassignmentView({ navigate }: { navigate: Navigate }) {
   const needsReassignment = (summary?.totalTasks ?? 0) > 0;
 
   const deactivate = async () => {
-    if (!user) return;
-    if (needsReassignment) {
-      if (!replacementUserId) return;
-      await reassignMutation.mutateAsync({ fromUserId: user.id, toUserId: replacementUserId });
+    if (!user || !summary) return;
+    try {
+      if (needsReassignment) {
+        if (!replacementUserId) return;
+        await reassignMutation.mutateAsync({ fromUserId: user.id, toUserId: replacementUserId });
+      }
+      await updateUserMutation.mutateAsync({ userId: user.id, role: user.role, isActive: false });
+      navigate(routes.management.users);
+    } catch {
+      // Mutation state renders the error and keeps the review open for retry.
     }
-    await updateUserMutation.mutateAsync({ userId: user.id, role: user.role, isActive: false });
-    navigate(routes.management.users);
   };
 
   return (
@@ -434,8 +438,27 @@ function UserReassignmentView({ navigate }: { navigate: Navigate }) {
         <Card><Group justify="space-between"><Stack gap={2}><Text weight={700}>{summary?.futurePersonalTasks ?? 0} atividades pessoais futuras</Text><Text size="xs" tone="muted">Vinculadas diretamente ao usuário</Text></Stack></Group></Card>
         {needsReassignment && <FormField label="Novo responsável *"><Select value={replacementUserId} onChange={setReplacementUserId} options={[{ value: '', label: 'Selecione um usuário' }, ...candidates.map((candidate) => ({ value: candidate.id, label: candidate.name }))]} /></FormField>}
         {(reassignMutation.isError || updateUserMutation.isError) && <Notice tone="danger">Não foi possível concluir a desativação.</Notice>}
-        <Button isFullWidth isLoading={reassignMutation.isPending || updateUserMutation.isPending} disabled={needsReassignment && !replacementUserId} onClick={() => void deactivate()}>DESATIVAR ACESSO</Button>
+        <Button isFullWidth isLoading={reassignMutation.isPending || updateUserMutation.isPending} disabled={!user || !summary || (needsReassignment && !replacementUserId)} onClick={() => void deactivate()}>DESATIVAR ACESSO</Button>
         <Button variant="secondary" isFullWidth onClick={() => navigate(routes.management.userEdit)}>CANCELAR</Button>
+      </Stack>
+    </Frame>
+  );
+}
+
+function UserReactivationView({ navigate }: { navigate: Navigate }) {
+  const userId = useManagementStore((state) => state.selectedUserId);
+  const { data: user } = useUserQuery(userId);
+  const mutation = useUpdateUserMutation();
+  return (
+    <Frame title="Reativar usuário" backTo={routes.management.userEdit} navigate={navigate}>
+      <Stack gap="lg">
+        <Notice tone="warning"><Stack gap={2}><Text weight={700}>Reativar acesso de {user?.name ?? 'usuário'}</Text><Text size="sm">Esta pessoa poderá acessar novamente a unidade com o papel abaixo. As tarefas reatribuídas permanecem com os responsáveis atuais.</Text></Stack></Notice>
+        {user && <DetailRows rows={[{ label: 'Usuário', value: user.username }, { label: 'Papel na unidade', value: user.role }]} />}
+        {mutation.isError && <Notice tone="danger">Não foi possível reativar o usuário. Tente novamente.</Notice>}
+        <Button isFullWidth isLoading={mutation.isPending} disabled={!user || user.isActive} onClick={() => {
+          if (user) mutation.mutate({ userId: user.id, role: user.role, isActive: true }, { onSuccess: () => navigate(routes.management.users) });
+        }}>CONFIRMAR REATIVAÇÃO</Button>
+        <Button variant="secondary" isFullWidth disabled={mutation.isPending} onClick={() => navigate(routes.management.userEdit)}>CANCELAR</Button>
       </Stack>
     </Frame>
   );
@@ -481,7 +504,7 @@ function UnitSettingsView({ navigate }: { navigate: Navigate }) {
       <Stack gap="lg">
         <Text size="xs" tone="muted" weight={700}>UNIDADE</Text>
         <FormField label="Nome"><TextInput value={name} onChange={setName} /></FormField>
-        <FormField label="Fuso horário"><TextInput value={timezone} readOnly /></FormField>
+        <Stack gap="xs"><TextInput label="Fuso horário (somente leitura)" value={timezone} readOnly /><Text size="xs" tone="muted">O fuso horário da unidade é fixo e não pode ser alterado nesta tela.</Text></Stack>
         <Text size="xs" tone="muted" weight={700}>DIA OPERACIONAL</Text>
         <FormField label="Horário de fechamento *"><TextInput type="time" value={closingTime} onChange={setClosingTime} /></FormField>
         <Notice tone="warning"><Stack gap={2}><Text weight={700}>O que acontece no fechamento</Text><Text size="sm">Pendências viram “Não feita” automaticamente com o motivo padrão, preservando o histórico.</Text></Stack></Notice>
@@ -497,9 +520,12 @@ function TaskReviewView({ navigate }: { navigate: Navigate }) {
   const taskDraft = useManagementStore((state) => state.taskDraft);
   const setSelectedTaskId = useManagementStore((state) => state.setSelectedTaskId);
   const mutation = useCreateTaskMutation();
+  const { data: settings } = useUnitSettingsQuery();
+  const dueTime = taskDraft.dueTime || settings?.closingTime || '';
 
   const create = async () => {
-    const created = await mutation.mutateAsync(taskDraft);
+    if (!dueTime) return;
+    const created = await mutation.mutateAsync({ ...taskDraft, dueTime });
     setSelectedTaskId(created.id);
     navigate(routes.management.taskCreated);
   };
@@ -511,10 +537,10 @@ function TaskReviewView({ navigate }: { navigate: Navigate }) {
       <Stack gap="lg">
         <Text tone="muted">Confira os dados antes de cadastrar.</Text>
         <Card><Stack><StatusBadge tone="pending">{taskDraft.assignmentType === 'general' ? 'Tarefa geral' : 'Tarefa pessoal'}</StatusBadge><Title order={2}>{taskDraft.title}</Title>{taskDraft.description && <Text size="sm">{taskDraft.description}</Text>}</Stack></Card>
-        <Card><Stack><Title order={3}>Configuração</Title><DetailRows rows={[{ label: 'Atribuição', value: assignmentLabel }, { label: 'Data de execução', value: taskDraft.executionDate }, { label: 'Horário', value: taskDraft.dueTime || 'Sem horário' }, { label: 'Evidência', value: taskDraft.isEvidenceRequired ? 'Foto obrigatória' : 'Foto opcional' }]} /></Stack></Card>
+        <Card><Stack><Title order={3}>Configuração</Title><DetailRows rows={[{ label: 'Atribuição', value: assignmentLabel }, { label: 'Data de execução', value: taskDraft.executionDate }, { label: 'Horário', value: dueTime || 'Carregando…' }, { label: 'Evidência', value: taskDraft.isEvidenceRequired ? 'Foto obrigatória' : 'Foto opcional' }]} /></Stack></Card>
         <Notice tone="success"><Stack gap={2}><Text weight={700}>Pronta para cadastrar</Text><Text size="sm">Uma nova tarefa será criada para a data escolhida, com status pendente.</Text></Stack></Notice>
         {mutation.isError && <Notice tone="danger">Não foi possível cadastrar a tarefa.</Notice>}
-        <Button isFullWidth isLoading={mutation.isPending} disabled={!taskDraft.title.trim() || !taskDraft.executionDate} onClick={() => void create()}>✓ &nbsp; CADASTRAR TAREFA</Button>
+        <Button isFullWidth isLoading={mutation.isPending} disabled={!taskDraft.title.trim() || !taskDraft.executionDate || !dueTime} onClick={() => void create()}>✓ &nbsp; CADASTRAR TAREFA</Button>
         <Button variant="secondary" isFullWidth onClick={() => navigate(routes.management.taskCreateRules)}>VOLTAR E AJUSTAR</Button>
       </Stack>
     </Frame>
@@ -714,6 +740,8 @@ function PreviousDaySummaryView({ navigate }: { navigate: Navigate }) {
 
 function CurrentDaySummaryView({ navigate }: { navigate: Navigate }) {
   const { data, isLoading, isFetching, refetch } = useCurrentDaySummaryQuery();
+  const selectTask = useManagementStore((state) => state.setSelectedTaskId);
+  const openTask = (taskId: string) => { selectTask(taskId); navigate(routes.management.currentDayTaskDetails); };
 
   return (
     <Frame title={data?.dateLabel ?? "Hoje"} action="ATUALIZAR" onAction={() => void refetch()} backTo={routes.management.dashboard} navigate={navigate}>
@@ -722,8 +750,25 @@ function CurrentDaySummaryView({ navigate }: { navigate: Navigate }) {
         <Text size="xs" tone="muted">{data ? `${data.closingLabel} · atualizado ${data.updatedAtLabel}` : 'Carregando acompanhamento…'}{isFetching && !isLoading ? ' · atualizando…' : ''}</Text>
         {data && <SummaryMetrics values={[{ value: data.summary.done, label: 'feitas', tone: 'success' }, { value: data.summary.pending, label: 'pendentes' }, { value: data.summary.overdue, label: 'atrasada', tone: 'danger' }]} />}
         {data && <Stack gap="xs"><Group justify="space-between"><Text size="xs">{data.summary.completionRate}% concluído</Text><Text size="xs">{data.remainingTimeLabel}</Text></Group><ProgressBar value={data.summary.completionRate} /></Stack>}
-        {data && <><Title order={2}>Precisa de atenção</Title><TaskCard title={data.attentionTask.title} status="Atrasada" tone="danger" due={data.attentionTask.dueLabel} assignee={data.attentionTask.assignee} /></>}
-        {data && <><Title order={2}>Ainda pendentes</Title>{data.pendingTasks.map((task) => <TaskCard key={task.id} title={task.title} due={task.dueLabel} assignee={task.assignee} evidence={task.evidenceLabel} />)}</>}
+        {data && <><Title order={2}>Precisa de atenção</Title><TaskCard title={data.attentionTask.title} status="Atrasada" tone="danger" due={data.attentionTask.dueLabel} assignee={data.attentionTask.assignee} onClick={() => openTask(data.attentionTask.id)} /></>}
+        {data && <><Title order={2}>Ainda pendentes</Title>{data.pendingTasks.map((task) => <TaskCard key={task.id} title={task.title} due={task.dueLabel} assignee={task.assignee} evidence={task.evidenceLabel} onClick={() => openTask(task.id)} />)}</>}
+      </Stack>
+    </Frame>
+  );
+}
+
+function CurrentDayTaskDetailsView({ navigate }: { navigate: Navigate }) {
+  const taskId = useManagementStore((state) => state.selectedTaskId);
+  const { data: task, isLoading, isError } = useCurrentDayTaskQuery(taskId);
+  return (
+    <Frame title="Detalhe da tarefa" backTo={routes.management.currentDaySummary} navigate={navigate}>
+      <Stack gap="lg">
+        {isLoading ? <Text tone="muted">Carregando tarefa…</Text> : isError ? <Notice tone="danger">Não foi possível carregar a tarefa.</Notice> : !task ? <EmptyState title="Tarefa não encontrada" description="Volte para Hoje e selecione uma tarefa." /> : <>
+          <StatusBadge tone={task.isOverdue ? 'danger' : 'pending'}>{task.isOverdue ? 'Atrasada' : 'Pendente'}</StatusBadge>
+          <Title order={2}>{task.title}</Title>
+          <DetailRows rows={[{ label: 'Responsável', value: task.assignee }, { label: 'Horário limite', value: task.dueLabel }, { label: 'Evidência', value: task.evidenceLabel }]} />
+          <Stack><Title order={3}>Histórico da ocorrência</Title><Timeline events={task.timeline} /></Stack>
+        </>}
       </Stack>
     </Frame>
   );
@@ -766,6 +811,8 @@ function CopyTaskView({ navigate }: { navigate: Navigate }) {
     <Frame title="Copiar tarefa" backTo={routes.management.taskCatalog} navigate={navigate}>
       <Stack gap="lg">
         <Text tone="muted">Revise os dados antes de criar a cópia.</Text>
+        <TextInput label="Horário limite da tarefa original" type="time" value={source?.dueTime ?? ''} readOnly />
+        <Text size="xs" tone="muted">A cópia mantém o horário limite da tarefa original.</Text>
         <FormField label="Título *"><TextInput value={title} onChange={setTitle} /></FormField>
         <FormField label="Descrição (opcional)"><TextArea value={description} onChange={setDescription} /></FormField>
         <FormField label="Data de execução *"><TextInput type="date" value={executionDate} onChange={setExecutionDate} /></FormField>
@@ -806,6 +853,7 @@ export function ManagementView({ route, navigate, onLogout, navMode = 'managemen
     case routes.management.userCreate: return <CreateUserView navigate={navigate} />;
     case routes.management.userEdit: return <EditUserView navigate={navigate} />;
     case routes.management.userReassignment: return <UserReassignmentView navigate={navigate} />;
+    case routes.management.userReactivation: return <UserReactivationView navigate={navigate} />;
     case routes.management.tasksByDate: return <TasksByDateView navigate={navigate} />;
     case routes.management.unitSettings: return <UnitSettingsView navigate={navigate} />;
     case routes.management.taskCreateReview: return <TaskReviewView navigate={navigate} />;
@@ -816,6 +864,7 @@ export function ManagementView({ route, navigate, onLogout, navMode = 'managemen
     case routes.management.historyFilters: return <PreviousDayDetailsView navigate={navigate} showFilters />;
     case routes.management.previousDaySummary: return <PreviousDaySummaryView navigate={navigate} />;
     case routes.management.currentDaySummary: return <CurrentDaySummaryView navigate={navigate} />;
+    case routes.management.currentDayTaskDetails: return <CurrentDayTaskDetailsView navigate={navigate} />;
     case routes.management.unitSelection: return <ManagerDashboardView navigate={navigate} navMode={navMode} isUnitSelectionOpen />;
     case routes.management.taskCopy: return <CopyTaskView navigate={navigate} />;
     case routes.management.taskCopyCreated: return <TaskCopyCreatedView navigate={navigate} />;

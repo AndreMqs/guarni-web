@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { AuditView } from '../views/Audit';
 import { EmployeeView } from '../views/Employee';
 import { ManagementView } from '../views/Management';
-import { employeeRoutes, managementRoutes, useNavigationStore, type AppRoute } from '../navigation';
+import { employeeRoutes, managementRoutes, routes, useNavigationStore, type AppRoute } from '../navigation';
 import type { NavigationMode } from '../navigation/types';
 
 export type AppRouterProps = {
@@ -12,7 +12,8 @@ export type AppRouterProps = {
 };
 
 export function AppRouter({ initialRoute, onLogout, navigationMode = 'management' }: AppRouterProps) {
-  const route = useNavigationStore((state) => state.route);
+  const requestedRoute = useNavigationStore((state) => state.route);
+  const route = navigationMode === 'employee' && !employeeRoutes.has(requestedRoute) ? routes.tasks.today : requestedRoute;
   const navigate = useNavigationStore((state) => state.navigate);
   const reset = useNavigationStore((state) => state.reset);
 
@@ -24,7 +25,7 @@ export function AppRouter({ initialRoute, onLogout, navigationMode = 'management
   }, [initialRoute, reset]);
 
   if (employeeRoutes.has(route)) {
-    return <EmployeeView route={route} navigate={navigate} />;
+    return <EmployeeView route={route} navigate={navigate} navMode={navigationMode} onLogout={onLogout} />;
   }
 
   if (managementRoutes.has(route)) {

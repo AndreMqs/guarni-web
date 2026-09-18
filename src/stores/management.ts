@@ -21,7 +21,7 @@ const createInitialTaskDraft = (): TaskDraft => ({
   description: '',
   assignmentType: 'general',
   executionDate: getTodayDate(),
-  dueTime: '10:00',
+  dueTime: '',
   isEvidenceRequired: true,
   isCommentEnabled: true,
 });

@@ -8,7 +8,7 @@ import styles from './BottomNavigation.module.scss';
 
 export function BottomNavigation({ active, navigate, mode = 'employee' }: BottomNavigationProps) {
   const destinations = mode === 'employee'
-    ? { today: routes.tasks.today, history: routes.history.daily, more: routes.tasks.today }
+    ? { today: routes.tasks.today, history: routes.history.daily, more: routes.tasks.menu }
     : mode === 'management'
       ? { today: routes.management.dashboard, history: routes.management.history, more: routes.management.menu }
       : { today: routes.management.dashboard, history: routes.management.history, more: routes.owner.menu };

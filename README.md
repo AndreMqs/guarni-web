@@ -35,7 +35,16 @@ As telas de tarefas, histórico, usuários, configurações, auditoria e mídia 
 
 O fluxo de dados segue `view → hook do TanStack Query → função de src/api`. Tabs, buscas, filtros, seleção e outros estados puramente visuais são controlados pelo frontend. Quando um endpoint real estiver disponível, a intenção é substituir somente a implementação da função em `src/api`, preservando os hooks e as views.
 
-O login mantém o contrato já previsto para `POST /v1/auth/login`, embora a função de API continue mockada nesta fase.
+O login continua mockado nesta fase e retorna o perfil usado na navegação da demonstração. Na integração com o backend, esse perfil deverá vir da sessão/membership autenticada.
+
+Contas de demonstração (senha `demonstracao123`):
+
+- `demo`: dono, com acesso à gestão e à execução de tarefas.
+- `demo.funcionario`: funcionário, com acesso às tarefas e ao histórico de execução.
+
+Dono e gerente acessam **Executar tarefas** no painel Hoje ou no menu Mais.
+Dentro da execução, **Mais → Voltar à gestão** retorna ao painel. Todos os
+usuários ativos podem ser responsáveis por tarefas, independentemente do papel.
 
 As referências de design e regras de negócio continuam em `docs/design/guarni/` e `docs/frontend-context.md`.
 

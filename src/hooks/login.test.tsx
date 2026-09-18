@@ -23,7 +23,7 @@ test('delegates login to the API layer', async () => {
 
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
   expect(loginSpy).toHaveBeenCalledWith(credentials, expect.anything())
-  expect(result.current.data).toEqual({ accessToken: 'mock-access-token' })
+  expect(result.current.data).toEqual({ accessToken: 'mock-access-token', role: 'owner' })
 
   queryClient.clear()
 })

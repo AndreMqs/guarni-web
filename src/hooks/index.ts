@@ -17,6 +17,7 @@ export {
   useCreateUserMutation,
   useAssignableUsersQuery,
   useCurrentDaySummaryQuery,
+  useCurrentDayTaskQuery,
   useHistoryDayQuery,
   useHistoryTaskQuery,
   useManagementDashboardQuery,

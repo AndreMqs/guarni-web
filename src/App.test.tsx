@@ -34,7 +34,7 @@ it.each([
 })
 
 it('shows a login failure and lets the user retry', async () => {
-  vi.spyOn(authApi, 'login').mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({ accessToken: 'token' })
+  vi.spyOn(authApi, 'login').mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({ accessToken: 'token', role: 'owner' })
   const user = await submitLogin('dono')
   expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível entrar. Tente novamente.')
   await user.click(screen.getByRole('button', { name: 'Entrar' }))

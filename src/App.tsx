@@ -7,20 +7,6 @@ import { AppRouter } from './router/AppRouter.tsx';
 import { LoginView } from './views/Login/index.ts';
 import type { NavigationMode } from './navigation/types';
 
-function getInitialRoute(username: string): AppRoute {
-  const normalizedUsername = username.toLowerCase();
-
-  if (normalizedUsername.includes('func')) {
-    return routes.tasks.today;
-  }
-
-  if (normalizedUsername.includes('ger')) {
-    return routes.management.dashboard;
-  }
-
-  return routes.management.dashboard;
-}
-
 function App() {
   const [accessToken, setAccessToken] = useState<string>();
   const [initialRoute, setInitialRoute] = useState<AppRoute>(routes.management.dashboard);
@@ -36,8 +22,9 @@ function App() {
       onSubmit={(credentials) => {
         loginMutation.mutate(credentials, {
           onSuccess: (response) => {
-            setInitialRoute(getInitialRoute(credentials.username));
-            setNavigationMode(credentials.username.includes('func') ? 'employee' : credentials.username.includes('ger') ? 'management' : 'owner');
+            queryClient.clear();
+            setInitialRoute(response.role === 'employee' ? routes.tasks.today : routes.management.dashboard);
+            setNavigationMode(response.role);
             setAccessToken(response.accessToken);
           },
         });

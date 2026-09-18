@@ -7,10 +7,17 @@ import {
   getManagementDashboard,
   getTaskCatalog,
   getUsers,
+  getAssignableUsers,
   updateUnitSettings,
 } from './management';
 
 describe('management api mock', () => {
+  it('allows every active role to be assigned tasks', async () => {
+    const users = await getAssignableUsers();
+    expect(users.map(user => user.role)).toEqual(expect.arrayContaining(['Dono', 'Gerente', 'Funcionário']));
+    expect(users.every(user => user.isActive)).toBe(true);
+    expect(await getAssignableUsers('andre')).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'user-andre' })]));
+  });
   afterEach(() => vi.useRealTimers());
   it('filters catalog by period and search after creating a task', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });

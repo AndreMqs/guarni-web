@@ -7,6 +7,7 @@ export const loginPageText = {
   submitButton: 'Entrar',
   demoPrefix: 'Demonstração: use',
   demoUsername: 'demo',
+  employeeDemoUsername: 'demo.funcionario',
   demoPasswordConnector: 'e a senha',
   demoPassword: 'demonstracao123',
   accessNote:
@@ -15,4 +16,3 @@ export const loginPageText = {
   genericSubmitError: 'Não foi possível entrar. Tente novamente.',
   loadingTasks: 'Carregando tarefas...',
 } as const
-

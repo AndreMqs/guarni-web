@@ -1,5 +1,6 @@
 export const routes = {
   tasks: {
+    menu: 'tasks/menu',
     today: 'tasks/today',
     all: 'tasks/all',
     pendingDetails: 'tasks/details/pending',
@@ -31,6 +32,7 @@ export const routes = {
     userCreate: 'management/users/create',
     userEdit: 'management/users/edit',
     userReassignment: 'management/users/reassignment',
+    userReactivation: 'management/users/reactivation',
     tasksByDate: 'management/tasks/by-date',
     unitSettings: 'management/unit/settings',
     taskCreateReview: 'management/tasks/create/review',
@@ -41,6 +43,7 @@ export const routes = {
     historyFilters: 'management/history/filters',
     previousDaySummary: 'management/dashboard/previous-day',
     currentDaySummary: 'management/dashboard/current-day',
+    currentDayTaskDetails: 'management/dashboard/current-day/task',
     unitSelection: 'management/unit/select',
     taskCopy: 'management/tasks/copy',
     taskCopyCreated: 'management/tasks/copy/created',

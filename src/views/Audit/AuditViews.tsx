@@ -72,6 +72,7 @@ function OwnerMenuView({ navigate, onLogout }: { navigate: Navigate; onLogout: (
   return (
     <Frame title="Mais" navigate={navigate} bottomNav="more" navMode="owner">
       <Stack gap="lg">
+        <MenuCard icon="✓" title="Executar tarefas" subtitle="Assumir e concluir tarefas da unidade" onClick={() => navigate(routes.tasks.today)} />
         <Card>
           <Group justify="space-between" wrap="nowrap">
             <Group wrap="nowrap"><Avatar initials={user?.initials ?? '--'} /><Stack gap={0}><Text weight={700}>{user?.name ?? 'Carregando…'}</Text><Text size="xs" tone="muted">{user ? `${user.roleLabel} · ${user.unitName}` : ''}</Text></Stack></Group>
