@@ -1,5 +1,6 @@
 import { PasswordInput as MantinePasswordInput } from '@mantine/core'
 import { forwardRef, useState } from 'react'
+import { passwordFieldText } from '../../constants/forms.ts'
 import styles from './PasswordField.module.scss'
 import type { PasswordFieldProps } from './PasswordField.types.ts'
 
@@ -34,7 +35,9 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
         onVisibilityChange={setIsPasswordVisible}
         visibilityToggleFocusable
         visibilityToggleButtonProps={{
-          'aria-label': isPasswordVisible ? 'Ocultar senha' : 'Mostrar senha',
+          'aria-label': isPasswordVisible
+            ? passwordFieldText.hidePassword
+            : passwordFieldText.showPassword,
         }}
         classNames={{
           root: styles.root,

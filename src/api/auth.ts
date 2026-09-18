@@ -1,4 +1,5 @@
 import type { LoginCredentials } from '../schemas/auth.ts'
+import { mockLoginAccessToken } from '../constants/login.ts'
 
 export type LoginResponse = {
   accessToken: string
@@ -14,5 +15,5 @@ export async function login(
   credentials: LoginCredentials,
 ): Promise<LoginResponse> {
   void credentials
-  return Promise.resolve({ accessToken: 'mock-access-token' })
+  return Promise.resolve({ accessToken: mockLoginAccessToken })
 }

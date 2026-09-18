@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Button } from '../../components/Button/index.ts'
 import { PasswordField } from '../../components/PasswordField/index.ts'
 import { TextField } from '../../components/TextField/index.ts'
+import { loginPageText } from '../../constants/login.ts'
 import { loginSchema } from '../../schemas/auth.ts'
 import styles from './Login.module.scss'
 import type { LoginViewProps } from './Login.types.ts'
@@ -47,14 +48,14 @@ export function LoginView({
       <div className={styles.shell}>
         <main className={styles.main}>
           <header className={styles.brand}>
-            <div className={styles.brandMark} aria-hidden="true">✓</div>
-            <h1 className={styles.title}>Checklist Restaurante</h1>
-            <p className={styles.subtitle}>Acompanhe as tarefas da sua unidade</p>
+            <div className={styles.brandMark} aria-hidden="true">{loginPageText.brandMark}</div>
+            <h1 className={styles.title}>{loginPageText.title}</h1>
+            <p className={styles.subtitle}>{loginPageText.subtitle}</p>
           </header>
 
           <form className={styles.form} noValidate onSubmit={handleSubmit}>
             <TextField
-              label="Usuário"
+              label={loginPageText.usernameLabel}
               name="username"
               autoComplete="username"
               autoCapitalize="none"
@@ -65,7 +66,7 @@ export function LoginView({
               onChange={() => clearFieldError('username')}
             />
             <PasswordField
-              label="Senha"
+              label={loginPageText.passwordLabel}
               name="password"
               autoComplete="current-password"
               isRequired
@@ -86,16 +87,22 @@ export function LoginView({
               isLoading={isSubmitting}
               disabled={isSubmitting}
             >
-              Entrar
+              {loginPageText.submitButton}
             </Button>
           </form>
 
+          <p className={styles.demoHint}>
+            {loginPageText.demoPrefix} <strong>{loginPageText.demoUsername}</strong>{' '}
+            {loginPageText.demoPasswordConnector}{' '}
+            <strong>{loginPageText.demoPassword}</strong>.
+          </p>
+
           <p className={styles.accessNote}>
-            Ao entrar, você acessará somente as unidades e permissões associadas ao seu usuário.
+            {loginPageText.accessNote}
           </p>
         </main>
 
-        <footer className={styles.footer}>Versão MVP · Uso online</footer>
+        <footer className={styles.footer}>{loginPageText.footer}</footer>
       </div>
     </div>
   )

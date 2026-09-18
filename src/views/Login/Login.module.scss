@@ -72,6 +72,16 @@
   text-align: center;
 }
 
+.demoHint {
+  margin: var(--guarni-spacing-md) 0 0;
+  padding: var(--guarni-spacing-sm) var(--guarni-spacing-md);
+  border-radius: var(--guarni-radius-md);
+  color: var(--guarni-text-muted);
+  background: var(--guarni-surface-hover);
+  font-size: var(--guarni-font-size-xs);
+  text-align: center;
+}
+
 .footer {
   padding-top: var(--guarni-spacing-lg);
   color: var(--guarni-text-muted);

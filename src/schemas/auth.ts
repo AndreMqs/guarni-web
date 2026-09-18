@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import {
   loginFieldLimits,
+  loginValidationMessages,
   usernameAllowedCharactersPattern,
 } from '../constants/auth.ts'
 
@@ -8,26 +9,26 @@ const usernameSchema = z
   .string()
   .trim()
   .toLowerCase()
-  .min(loginFieldLimits.username.minLength, 'Informe o usuário.')
+  .min(loginFieldLimits.username.minLength, loginValidationMessages.usernameRequired)
   .max(
     loginFieldLimits.username.maxLength,
-    `O usuário deve ter no máximo ${loginFieldLimits.username.maxLength} caracteres.`,
+    loginValidationMessages.usernameTooLong,
   )
   .regex(
     usernameAllowedCharactersPattern,
-    'Use apenas letras sem acento, números, ponto, hífen ou sublinhado.',
+    loginValidationMessages.usernameInvalidCharacters,
   )
 
 const passwordSchema = z
   .string()
-  .min(1, 'Informe a senha.')
+  .min(1, loginValidationMessages.passwordRequired)
   .min(
     loginFieldLimits.password.minLength,
-    `A senha deve ter pelo menos ${loginFieldLimits.password.minLength} caracteres.`,
+    loginValidationMessages.passwordTooShort,
   )
   .max(
     loginFieldLimits.password.maxLength,
-    `A senha deve ter no máximo ${loginFieldLimits.password.maxLength} caracteres.`,
+    loginValidationMessages.passwordTooLong,
   )
 
 export const loginSchema = z.strictObject({
