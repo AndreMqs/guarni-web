@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest'
 import { loginFieldLimits } from '../constants/auth.ts'
-import { loginSchema } from './loginSchema.ts'
+import { loginSchema } from './auth.ts'
 
 const validCredentials = {
   username: 'andre.camara',

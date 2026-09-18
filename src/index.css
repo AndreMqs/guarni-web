@@ -6,15 +6,7 @@
 }
 
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: var(--guarni-border-width) solid var(--guarni-border);
   min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
 }
 
 body {
@@ -24,38 +16,6 @@ body {
   line-height: var(--guarni-line-height);
   color: var(--guarni-text);
   background: var(--guarni-background);
-}
-
-h1,
-h2 {
-  font-weight: var(--guarni-heading-font-weight);
-  line-height: 1.3;
-  color: var(--guarni-text);
-}
-
-h1 {
-  font-size: var(--guarni-heading-size);
-  margin: var(--guarni-spacing-xl) 0;
-}
-
-h2 {
-  font-size: var(--guarni-subheading-size);
-  margin: 0 0 var(--guarni-spacing-sm);
-}
-
-p {
-  margin: 0;
-  color: var(--guarni-text-muted);
-}
-
-code {
-  font-family: var(--guarni-font-family-monospace);
-  display: inline-flex;
-  border-radius: var(--guarni-radius-sm);
-  color: var(--guarni-text);
-  font-size: var(--guarni-font-size-sm);
-  padding: var(--guarni-spacing-xs) var(--guarni-spacing-sm);
-  background: var(--guarni-surface);
 }
 
 .guarni-focus:focus-visible,
