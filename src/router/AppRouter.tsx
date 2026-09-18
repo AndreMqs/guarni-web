@@ -6,9 +6,10 @@ import { employeeRoutes, managementRoutes, useNavigationStore, type AppRoute } f
 
 export type AppRouterProps = {
   initialRoute: AppRoute;
+  onLogout: () => void;
 };
 
-export function AppRouter({ initialRoute }: AppRouterProps) {
+export function AppRouter({ initialRoute, onLogout }: AppRouterProps) {
   const route = useNavigationStore((state) => state.route);
   const navigate = useNavigationStore((state) => state.navigate);
   const reset = useNavigationStore((state) => state.reset);
@@ -25,8 +26,8 @@ export function AppRouter({ initialRoute }: AppRouterProps) {
   }
 
   if (managementRoutes.has(route)) {
-    return <ManagementView route={route} navigate={navigate} />;
+    return <ManagementView route={route} navigate={navigate} onLogout={onLogout} />;
   }
 
-  return <AuditView route={route} navigate={navigate} />;
+  return <AuditView route={route} navigate={navigate} onLogout={onLogout} />;
 }

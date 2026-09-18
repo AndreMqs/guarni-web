@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import type { HistoryEventCategory, TaskScope, TaskStatus } from '../../api';
 import {
   BottomSheet,
   Button,
@@ -8,7 +10,6 @@ import {
   FormField,
   Frame,
   Group,
-  IconButton,
   MediaPlaceholder,
   Notice,
   SearchField,
@@ -24,57 +25,81 @@ import {
   Title,
   UploadArea,
 } from '../../components';
+import {
+  useClosedDayHistoryQuery,
+  useCompleteTaskMutation,
+  useCorrectTaskExecutionMutation,
+  useDailyHistoryQuery,
+  useEmployeeTaskQuery,
+  useMarkTaskNotDoneMutation,
+  useTakeOverTaskMutation,
+  useTodayTasksQuery,
+} from '../../hooks';
 import { routes, type AppRoute, type Navigate } from '../../navigation';
+import { useTaskStore } from '../../stores';
 
-const myTasks = [
-  { title: 'Higienizar bancada da cozinha', due: 'até 10:00', evidence: 'Foto obrigatória', next: routes.tasks.pendingDetails },
-  { title: 'Conferir temperatura dos freezers', due: 'até 15:00', evidence: 'Evidência opcional', next: routes.tasks.updateConflict },
-  { title: 'Organizar estoque seco', due: 'sem horário', evidence: 'Foto opcional', next: routes.tasks.pendingDetails },
-];
+const scopeByTab: Record<string, TaskScope> = { Minhas: 'mine', Gerais: 'general', Todas: 'all' };
+const tabByScope: Record<TaskScope, string> = { mine: 'Minhas', general: 'Gerais', all: 'Todas' };
 
-const unitTasks = [
-  { title: 'Limpar salão antes da abertura', due: 'até 11:00', assignee: 'Geral', next: routes.tasks.pendingDetails },
-  { title: 'Conferir validade dos molhos', due: 'até 14:00', assignee: 'Marina Souza', next: routes.tasks.takeover },
-  { title: 'Fotografar fechamento do caixa', due: 'até 23:30', assignee: 'Rafael Lima', next: routes.tasks.pendingDetails },
-];
+const taskStatusPresentation: Record<TaskStatus, { label: string; tone: 'pending' | 'done' | 'danger' }> = {
+  pending: { label: 'Pendente', tone: 'pending' },
+  done: { label: 'Feita', tone: 'done' },
+  notDone: { label: 'Não feita', tone: 'danger' },
+};
 
-function TodayTasksView({ navigate, showAll = false }: { navigate: Navigate; showAll?: boolean }) {
+function TodayTasksView({ navigate, initialScope = 'mine' }: { navigate: Navigate; initialScope?: TaskScope }) {
+  const [scope, setScope] = useState<TaskScope>(initialScope);
+  const [search, setSearch] = useState('');
+  const setSelectedTaskId = useTaskStore((state) => state.setSelectedTaskId);
+  const { data, isLoading } = useTodayTasksQuery({ scope, search });
+  const tasks = data?.tasks ?? [];
+
+  const handleTabChange = (tab: string) => {
+    setScope(scopeByTab[tab] ?? 'mine');
+    setSearch('');
+  };
+
   return (
     <Frame title="Tarefas de hoje" action="31 AGO" navigate={navigate} bottomNav="today">
       <Stack gap="lg">
-        <Group justify="space-between" wrap="nowrap">
-          <Text size="sm">Hoje, segunda-feira · 31 ago</Text>
-          <IconButton ariaLabel="Selecionar data">⌄</IconButton>
-        </Group>
+        <Text size="sm">{data?.dateLabel ?? 'Carregando data…'}</Text>
 
-        {!showAll && (
+        {scope !== 'all' && data && (
           <SummaryMetrics values={[
-            { value: 4, label: 'feitas' },
-            { value: 3, label: 'pendentes' },
-            { value: 1, label: 'não feita' },
+            { value: data.summary.done, label: 'feitas' },
+            { value: data.summary.pending, label: 'pendentes' },
+            { value: data.summary.notDone, label: 'não feita' },
           ]} />
         )}
 
-        <Tabs
-          items={['Minhas', 'Gerais', 'Todas']}
-          active={showAll ? 'Todas' : 'Minhas'}
-          onChange={(value) => navigate(value === 'Todas' ? routes.tasks.all : routes.tasks.today)}
-        />
+        <Tabs items={['Minhas', 'Gerais', 'Todas']} active={tabByScope[scope]} onChange={handleTabChange} />
 
-        {showAll && <SearchField placeholder="Buscar tarefa ou responsável" />}
+        {scope === 'all' && <SearchField placeholder="Buscar tarefa ou responsável" value={search} onChange={setSearch} />}
 
         <Stack>
-          <Text size="xs" tone="muted">{showAll ? '8 tarefas da unidade' : '3 tarefas pendentes'}</Text>
-          {(showAll ? unitTasks : myTasks).map((task) => (
-            <TaskCard
-              key={task.title}
-              title={task.title}
-              due={task.due}
-              assignee={'assignee' in task ? task.assignee : 'Você'}
-              evidence={'evidence' in task ? task.evidence : undefined}
-              onClick={() => navigate(task.next)}
-            />
-          ))}
+          <Text size="xs" tone="muted">{isLoading ? 'Carregando tarefas…' : `${tasks.length} ${tasks.length === 1 ? 'tarefa' : 'tarefas'} neste filtro`}</Text>
+          {!isLoading && tasks.length === 0 ? (
+            <EmptyState title="Nenhuma tarefa encontrada" description={search ? 'Tente outro termo de busca.' : 'Não há tarefas para este filtro.'} />
+          ) : tasks.map((task) => {
+            const presentation = taskStatusPresentation[task.status];
+            return (
+              <TaskCard
+                key={task.id}
+                title={task.title}
+                status={presentation.label}
+                tone={presentation.tone}
+                due={task.dueLabel}
+                assignee={task.assigneeLabel}
+                evidence={task.evidenceLabel}
+                onClick={() => {
+                  setSelectedTaskId(task.id);
+                  if (task.canTakeOver) navigate(routes.tasks.takeover);
+                  else if (task.status === 'done') navigate(routes.tasks.completedDetails);
+                  else navigate(routes.tasks.pendingDetails);
+                }}
+              />
+            );
+          })}
         </Stack>
       </Stack>
     </Frame>
@@ -82,25 +107,20 @@ function TodayTasksView({ navigate, showAll = false }: { navigate: Navigate; sho
 }
 
 function PendingTaskDetailsView({ navigate }: { navigate: Navigate }) {
+  const taskId = useTaskStore((state) => state.selectedTaskId);
+  const { data: task } = useEmployeeTaskQuery(taskId);
   return (
     <Frame title="Detalhe da tarefa" action="⋯" backTo={routes.tasks.today} navigate={navigate}>
       <Stack gap="lg">
-        <Group gap="xs"><StatusBadge tone="pending">Pendente</StatusBadge><StatusBadge tone="danger">Atrasada</StatusBadge></Group>
-        <Stack gap="xs">
-          <Title order={2}>Higienizar bancada da cozinha</Title>
-          <Text tone="muted">Limpar toda a superfície, os cantos e a área próxima à pia antes do início do atendimento.</Text>
-        </Stack>
-        <Card>
-          <DetailRows rows={[
-            { label: 'Prazo', value: 'Hoje, até 10:00' },
-            { label: 'Responsável', value: 'Você' },
-            { label: 'Data de execução', value: 'Hoje, 31 ago' },
-            { label: 'Evidência', value: '1 foto obrigatória' },
-          ]} />
-        </Card>
-        <Notice tone="warning">
-          <Stack gap={2}><Text weight={700}>A tarefa está atrasada.</Text><Text size="sm">Ainda é possível concluí-la até o fechamento do dia.</Text></Stack>
-        </Notice>
+        <Group gap="xs"><StatusBadge tone="pending">Pendente</StatusBadge>{task?.isOverdue && <StatusBadge tone="danger">Atrasada</StatusBadge>}</Group>
+        <Stack gap="xs"><Title order={2}>{task?.title ?? 'Tarefa'}</Title><Text tone="muted">{task?.description ?? 'Consulte as instruções e conclua a atividade dentro do dia operacional.'}</Text></Stack>
+        <Card><DetailRows rows={[
+          { label: 'Prazo', value: task?.dueLabel ?? 'Sem horário' },
+          { label: 'Responsável', value: task?.assigneeLabel ?? 'Você' },
+          { label: 'Data de execução', value: task?.executionDateLabel ?? 'Hoje' },
+          { label: 'Evidência', value: task?.evidenceLabel ?? 'Sem evidência obrigatória' },
+        ]} /></Card>
+        {task?.isOverdue && <Notice tone="warning"><Stack gap={2}><Text weight={700}>A tarefa está atrasada.</Text><Text size="sm">Ainda é possível concluí-la até o fechamento do dia.</Text></Stack></Notice>}
         <Stack gap="sm">
           <Button isFullWidth onClick={() => navigate(routes.tasks.complete)}>✓ &nbsp; CONCLUIR TAREFA</Button>
           <Button variant="secondary" isFullWidth onClick={() => navigate(routes.tasks.markNotDone)}>× &nbsp; MARCAR COMO NÃO FEITA</Button>
@@ -111,20 +131,33 @@ function PendingTaskDetailsView({ navigate }: { navigate: Navigate }) {
 }
 
 function TakeOverTaskView({ navigate }: { navigate: Navigate }) {
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [reason, setReason] = useState('');
+  const taskId = useTaskStore((state) => state.selectedTaskId);
+  const { data: task } = useEmployeeTaskQuery(taskId);
+  const mutation = useTakeOverTaskMutation();
+
+  const confirm = async () => {
+    await mutation.mutateAsync({ taskId, reason });
+    setIsSheetOpen(false);
+    navigate(routes.tasks.pendingDetails);
+  };
+
   return (
     <Frame title="Detalhe da tarefa" action="⋯" backTo={routes.tasks.all} navigate={navigate}>
       <Stack gap="lg">
         <StatusBadge tone="pending">Pendente</StatusBadge>
-        <Stack gap="xs"><Title order={2}>Conferir validade dos molhos</Title><Text tone="muted">Responsável atual: Marina Souza</Text></Stack>
-        <Button variant="secondary" isFullWidth>ASSUMIR ESTA TAREFA</Button>
+        <Stack gap="xs"><Title order={2}>{task?.title ?? 'Tarefa'}</Title><Text tone="muted">Responsável atual: {task?.assigneeLabel ?? 'Outro funcionário'}</Text></Stack>
+        <Button variant="secondary" isFullWidth onClick={() => setIsSheetOpen(true)}>ASSUMIR ESTA TAREFA</Button>
       </Stack>
-      <BottomSheet>
+      <BottomSheet opened={isSheetOpen} onClose={() => setIsSheetOpen(false)}>
         <Stack gap="lg">
-          <Stack gap="xs"><Title order={2}>Assumir tarefa</Title><Text tone="muted">Esta tarefa está atribuída a Marina Souza. Explique por que você irá executá-la.</Text></Stack>
-          <FormField label="Justificativa *"><TextArea placeholder="Ex.: Marina precisou atender uma entrega" /></FormField>
+          <Stack gap="xs"><Title order={2}>Assumir tarefa</Title><Text tone="muted">Explique por que você irá executar esta tarefa.</Text></Stack>
+          <FormField label="Justificativa *"><TextArea value={reason} onChange={setReason} placeholder="Ex.: o responsável precisou atender uma entrega" /></FormField>
           <Text size="xs" tone="muted">A troca ficará registrada no histórico.</Text>
-          <Button isFullWidth onClick={() => navigate(routes.tasks.pendingDetails)}>CONFIRMAR E ASSUMIR</Button>
-          <Button variant="secondary" isFullWidth onClick={() => navigate(routes.tasks.all)}>CANCELAR</Button>
+          {mutation.isError && <Notice tone="danger">Não foi possível assumir a tarefa. Tente novamente.</Notice>}
+          <Button isFullWidth isLoading={mutation.isPending} disabled={!reason.trim()} onClick={() => void confirm()}>CONFIRMAR E ASSUMIR</Button>
+          <Button variant="secondary" isFullWidth onClick={() => setIsSheetOpen(false)}>CANCELAR</Button>
         </Stack>
       </BottomSheet>
     </Frame>
@@ -134,67 +167,81 @@ function TakeOverTaskView({ navigate }: { navigate: Navigate }) {
 type CompletionState = 'form' | 'saving' | 'error';
 
 function CompleteTaskView({ navigate, state = 'form' }: { navigate: Navigate; state?: CompletionState }) {
+  const taskId = useTaskStore((store) => store.selectedTaskId);
+  const executionDraft = useTaskStore((store) => store.executionDraft);
+  const updateExecutionDraft = useTaskStore((store) => store.updateExecutionDraft);
+  const resetExecutionDraft = useTaskStore((store) => store.resetExecutionDraft);
+  const { data: task } = useEmployeeTaskQuery(taskId);
+  const mutation = useCompleteTaskMutation();
+  const [file, setFile] = useState<File | null>(executionDraft.evidenceName ? new File([], executionDraft.evidenceName) : null);
+
+  const requiresEvidence = task?.evidenceLabel?.toLocaleLowerCase('pt-BR').includes('obrigatória') ?? false;
+  const canSubmit = !requiresEvidence || Boolean(file);
+  const displayState: CompletionState = mutation.isPending ? 'saving' : mutation.isError ? 'error' : state;
+
+  const handleFile = (nextFile: File | null) => {
+    setFile(nextFile);
+    updateExecutionDraft({ evidenceName: nextFile?.name });
+  };
+
+  const submit = async () => {
+    await mutation.mutateAsync({ taskId, comment: executionDraft.comment, evidenceName: file?.name });
+    resetExecutionDraft();
+    navigate(routes.tasks.completedDetails);
+  };
+
   return (
     <Frame title="Concluir tarefa" backTo={routes.tasks.pendingDetails} navigate={navigate}>
       <Stack gap="lg">
-        <Stack gap="xs">
-          <Title order={2}>Higienizar bancada da cozinha</Title>
-          {state === 'form' && <Text tone="muted">Adicione a evidência antes de confirmar.</Text>}
-        </Stack>
+        <Stack gap="xs"><Title order={2}>{task?.title ?? 'Tarefa'}</Title>{displayState === 'form' && <Text tone="muted">Adicione a evidência antes de confirmar.</Text>}</Stack>
 
-        {state === 'error' ? (
-          <Card>
-            <Group wrap="nowrap">
-              <MediaPlaceholder title="bancada.jpg" compact style={{ width: 80 }} />
-              <Stack gap={4}>
-                <Text weight={700}>bancada.jpg</Text>
-                <Text size="xs" tone="muted">2,4 MB</Text>
-                <StatusBadge tone="danger">Falha no envio</StatusBadge>
-              </Stack>
-            </Group>
-          </Card>
-        ) : (
-          <UploadArea title="Tirar foto" description="ou escolher da galeria" icon="▣" />
-        )}
+        <UploadArea title="Tirar foto" description="ou escolher da galeria" icon="▣" fileName={file?.name} onFileSelect={handleFile} disabled={displayState === 'saving'} />
 
-        {state === 'form' && (
+        {displayState === 'form' && (
           <>
             <Text size="xs" tone="muted">Uma foto por execução · disponível por 60 dias</Text>
-            <FormField label="Comentário"><TextArea placeholder="Inclua uma observação, se necessário" /></FormField>
+            <FormField label="Comentário"><TextArea value={executionDraft.comment} onChange={(comment) => updateExecutionDraft({ comment })} placeholder="Inclua uma observação, se necessário" /></FormField>
             <Notice>Executor, horário, comentário e mídia serão registrados juntos.</Notice>
-            <Button isFullWidth onClick={() => navigate(routes.tasks.completionSaving)}>✓ &nbsp; CONFIRMAR CONCLUSÃO</Button>
-            <Text size="xs" tone="muted">O botão será liberado após adicionar a foto.</Text>
+            <Button isFullWidth disabled={!canSubmit} onClick={() => void submit()}>✓ &nbsp; CONFIRMAR CONCLUSÃO</Button>
+            {!canSubmit && <Text size="xs" tone="muted">O botão será liberado após adicionar a foto.</Text>}
           </>
         )}
 
-        {state === 'error' && (
+        {displayState === 'error' && (
           <>
             <Notice tone="info">A evidência continua nesta tela e não será duplicada ao tentar novamente.</Notice>
             <Notice tone="danger"><Stack gap={2}><Text weight={700}>Não foi possível enviar agora</Text><Text size="sm">Nada foi salvo. Conecte-se e tente novamente.</Text></Stack></Notice>
-            <Button isFullWidth onClick={() => navigate(routes.tasks.completionSaving)}>↻ &nbsp; TENTAR NOVAMENTE</Button>
+            <Button isFullWidth onClick={() => void submit()}>↻ &nbsp; TENTAR NOVAMENTE</Button>
             <Button variant="secondary" isFullWidth onClick={() => navigate(routes.tasks.pendingDetails)}>CANCELAR E VOLTAR</Button>
           </>
         )}
 
-        {state === 'saving' && <Button isFullWidth disabled>✓ &nbsp; CONFIRMAR CONCLUSÃO</Button>}
+        {displayState === 'saving' && <Button isFullWidth disabled>✓ &nbsp; CONFIRMAR CONCLUSÃO</Button>}
       </Stack>
-
-      {state === 'saving' && (
-        <Dialog title="Salvando conclusão…">Estamos enviando a evidência. Não feche esta tela.</Dialog>
-      )}
+      {displayState === 'saving' && <Dialog title="Salvando conclusão…">Estamos enviando a evidência. Não feche esta tela.</Dialog>}
     </Frame>
   );
 }
 
 function MarkTaskNotDoneView({ navigate }: { navigate: Navigate }) {
+  const [reason, setReason] = useState('');
+  const taskId = useTaskStore((state) => state.selectedTaskId);
+  const { data: task } = useEmployeeTaskQuery(taskId);
+  const mutation = useMarkTaskNotDoneMutation();
+  const submit = async () => {
+    await mutation.mutateAsync({ taskId, reason });
+    navigate(routes.history.daily);
+  };
+
   return (
     <Frame title="Não foi possível concluir" backTo={routes.tasks.pendingDetails} navigate={navigate}>
       <Stack gap="lg">
-        <Title order={2}>Higienizar bancada da cozinha</Title>
+        <Title order={2}>{task?.title ?? 'Tarefa'}</Title>
         <Notice tone="danger"><Stack gap={2}><Text weight={700}>A tarefa será encerrada como não feita.</Text><Text size="sm">Essa ação e a justificativa ficarão no histórico do dia.</Text></Stack></Notice>
-        <FormField label="Motivo *"><TextArea placeholder="Descreva o que impediu a execução" /></FormField>
+        <FormField label="Motivo *"><TextArea value={reason} onChange={setReason} placeholder="Descreva o que impediu a execução" /></FormField>
         <Text size="xs" tone="muted">Exemplos: equipamento indisponível, falta de insumo ou acesso bloqueado.</Text>
-        <Button isFullWidth onClick={() => navigate(routes.history.closedDay)}>× &nbsp; CONFIRMAR COMO NÃO FEITA</Button>
+        {mutation.isError && <Notice tone="danger">Não foi possível salvar. Tente novamente.</Notice>}
+        <Button isFullWidth isLoading={mutation.isPending} disabled={!reason.trim()} onClick={() => void submit()}>× &nbsp; CONFIRMAR COMO NÃO FEITA</Button>
         <Button variant="secondary" isFullWidth onClick={() => navigate(routes.tasks.pendingDetails)}>VOLTAR PARA A TAREFA</Button>
       </Stack>
     </Frame>
@@ -202,65 +249,104 @@ function MarkTaskNotDoneView({ navigate }: { navigate: Navigate }) {
 }
 
 function CompletedTaskDetailsView({ navigate }: { navigate: Navigate }) {
+  const taskId = useTaskStore((state) => state.selectedTaskId);
+  const { data: task, isLoading } = useEmployeeTaskQuery(taskId);
   return (
     <Frame title="Detalhe da tarefa" action="CORRIGIR" onAction={() => navigate(routes.tasks.correction)} backTo={routes.tasks.today} navigate={navigate}>
       <Stack gap="lg">
-        <StatusBadge tone="done">Feita</StatusBadge>
-        <Stack gap="xs"><Title order={2}>Higienizar bancada da cozinha</Title><Text tone="muted">Concluída por André Câmara · 10:18</Text></Stack>
-        <Stack><Title order={3}>Evidência</Title><MediaPlaceholder title="Foto da bancada higienizada" /></Stack>
-        <Stack gap="xs"><Title order={3}>Comentário</Title><Text>Bancada finalizada e produtos guardados.</Text></Stack>
-        <Stack><Title order={3}>Histórico</Title><Timeline events={[{ title: 'Tarefa concluída', meta: '10:18 · André Câmara' }, { title: 'Tarefa atribuída', meta: '08:00 · Gerente' }]} /></Stack>
-        <Text size="xs" tone="muted">Você pode corrigir sua execução enquanto o dia estiver aberto.</Text>
+        {isLoading ? <Text tone="muted">Carregando tarefa…</Text> : (
+          <>
+            <StatusBadge tone="done">Feita</StatusBadge>
+            <Stack gap="xs"><Title order={2}>{task?.title ?? 'Tarefa concluída'}</Title><Text tone="muted">Concluída por {task?.completedByLabel ?? task?.assigneeLabel ?? 'executor'}</Text></Stack>
+            <Stack><Title order={3}>Evidência</Title>{task?.evidenceName ? <MediaPlaceholder title={task.evidenceName} /> : <Text size="sm" tone="muted">Nenhuma evidência anexada.</Text>}</Stack>
+            <Stack gap="xs"><Title order={3}>Comentário</Title><Text>{task?.comment || 'Nenhum comentário informado.'}</Text></Stack>
+            <Stack><Title order={3}>Histórico</Title>{task?.timeline?.length ? <Timeline events={task.timeline} /> : <Text size="sm" tone="muted">Sem eventos adicionais.</Text>}</Stack>
+            <Text size="xs" tone="muted">Você pode corrigir sua execução enquanto o dia estiver aberto.</Text>
+          </>
+        )}
       </Stack>
     </Frame>
   );
 }
 
 function DailyHistoryView({ navigate }: { navigate: Navigate }) {
+  const [category, setCategory] = useState<HistoryEventCategory>('all');
+  const [draftCategory, setDraftCategory] = useState<HistoryEventCategory>('all');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const { data, isLoading } = useDailyHistoryQuery({ category });
+
   return (
-    <Frame title="Histórico" action="FILTRAR" navigate={navigate} bottomNav="history">
+    <Frame title="Histórico" action="FILTRAR" onAction={() => { setDraftCategory(category); setIsFilterOpen(true); }} navigate={navigate} bottomNav="history">
       <Stack gap="lg">
-        <Group justify="space-between"><Text>Segunda-feira · 31 ago</Text><IconButton ariaLabel="Selecionar data">⌄</IconButton></Group>
-        <SummaryMetrics values={[{ value: 12, label: 'feitas' }, { value: 0, label: 'pendentes' }, { value: 2, label: 'não feitas' }]} />
-        <Stack><Title order={2}>Atividade do dia</Title><Timeline events={[
-          { title: 'Higienizar bancada — Feita', meta: '10:18 · André · 1 foto' },
-          { title: 'Conferir validade — Assumida', meta: '11:42 · Rafael assumiu de Marina' },
-          { title: 'Organizar estoque — Não feita', meta: '14:05 · Motivo informado' },
-          { title: 'Limpar salão — Feita', meta: '15:20 · Marina · sem mídia' },
-          { title: 'Comentário adicionado', meta: '16:08 · Gerente · correção registrada' },
-        ]} /></Stack>
+        <Text>{data?.dateLabel ?? 'Carregando data…'}</Text>
+        {data && <SummaryMetrics values={[{ value: data.summary.done, label: 'feitas' }, { value: data.summary.pending, label: 'pendentes' }, { value: data.summary.notDone, label: 'não feitas' }]} />}
+        <Stack>
+          <Title order={2}>Atividade do dia</Title>
+          {isLoading ? <Text size="sm" tone="muted">Carregando histórico…</Text> : data?.events.length ? <Timeline events={data.events.map((event) => ({ title: event.title, meta: event.meta }))} /> : <EmptyState title="Nenhum evento neste filtro" description="Altere o filtro para consultar outras atividades do dia." />}
+        </Stack>
         <Button variant="secondary" isFullWidth onClick={() => navigate(routes.history.closedDay)}>VER DIA ENCERRADO</Button>
       </Stack>
+      <BottomSheet opened={isFilterOpen} onClose={() => setIsFilterOpen(false)}>
+        <Stack gap="lg">
+          <Title order={2}>Filtrar histórico</Title>
+          <FormField label="Tipo de evento"><Select value={draftCategory} onChange={(value) => setDraftCategory(value as HistoryEventCategory)} options={[
+            { value: 'all', label: 'Todos os eventos' },
+            { value: 'execution', label: 'Execuções' },
+            { value: 'assignment', label: 'Reatribuições' },
+            { value: 'correction', label: 'Correções' },
+          ]} /></FormField>
+          <Button isFullWidth onClick={() => { setCategory(draftCategory); setIsFilterOpen(false); }}>APLICAR FILTRO</Button>
+          <Button variant="secondary" isFullWidth onClick={() => { setDraftCategory('all'); setCategory('all'); setIsFilterOpen(false); }}>LIMPAR FILTRO</Button>
+        </Stack>
+      </BottomSheet>
     </Frame>
   );
 }
 
 function ClosedDayHistoryView({ navigate }: { navigate: Navigate }) {
+  const { data, isLoading } = useClosedDayHistoryQuery();
   return (
-    <Frame title="Histórico" action="31 AGO" navigate={navigate} bottomNav="history">
+    <Frame title="Histórico" action={data?.dateLabel?.toLocaleUpperCase('pt-BR') ?? 'DIA ENCERRADO'} navigate={navigate} bottomNav="history">
       <Stack gap="lg">
-        <Notice><Stack gap={2}><Text weight={700}>Dia operacional encerrado às 03:00</Text><Text size="sm">Pendências foram encerradas automaticamente como não feitas.</Text></Stack></Notice>
-        <StatusBadge tone="danger">Não feita</StatusBadge>
-        <Title order={2}>Fotografar fechamento do caixa</Title>
-        <Stack gap={2}><Text size="xs" tone="muted">MOTIVO</Text><Text tone="danger">Não concluída até o fechamento do dia</Text></Stack>
-        <Stack gap={2}><Text size="xs" tone="muted">REGISTRADO AUTOMATICAMENTE</Text><Text>03:00 · Sistema · sem evidência</Text></Stack>
-        <Notice><Stack gap={2}><Text weight={700}>Após o fechamento</Text><Text size="sm">Funcionários somente consultam. Gerente ou dono podem corrigir, com justificativa.</Text></Stack></Notice>
+        {isLoading ? <Text tone="muted">Carregando histórico…</Text> : data && (
+          <>
+            <Notice><Stack gap={2}><Text weight={700}>Dia operacional encerrado às {data.closedAtLabel}</Text><Text size="sm">Pendências foram encerradas automaticamente como não feitas.</Text></Stack></Notice>
+            <StatusBadge tone="danger">Não feita</StatusBadge>
+            <Title order={2}>{data.task.title}</Title>
+            <Stack gap={2}><Text size="xs" tone="muted">MOTIVO</Text><Text tone="danger">{data.task.reason}</Text></Stack>
+            <Stack gap={2}><Text size="xs" tone="muted">REGISTRADO AUTOMATICAMENTE</Text><Text>{data.task.recordedAtLabel}</Text></Stack>
+            <Notice><Stack gap={2}><Text weight={700}>Após o fechamento</Text><Text size="sm">Funcionários somente consultam. Gerente ou dono podem corrigir, com justificativa.</Text></Stack></Notice>
+          </>
+        )}
       </Stack>
     </Frame>
   );
 }
 
 function CorrectOwnExecutionView({ navigate }: { navigate: Navigate }) {
+  const taskId = useTaskStore((state) => state.selectedTaskId);
+  const { data: task } = useEmployeeTaskQuery(taskId);
+  const [status, setStatus] = useState<'done' | 'notDone'>('done');
+  const [comment, setComment] = useState('');
+  const [reason, setReason] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const mutation = useCorrectTaskExecutionMutation();
+
+  const save = async () => {
+    await mutation.mutateAsync({ taskId, status, comment, reason, evidenceName: file?.name });
+    navigate(routes.tasks.completedDetails);
+  };
+
   return (
     <Frame title="Corrigir execução" backTo={routes.tasks.completedDetails} navigate={navigate}>
       <Stack gap="lg">
-        <Stack gap="xs"><Title order={2}>Higienizar bancada da cozinha</Title><Text tone="muted">Sua execução · Dia aberto</Text></Stack>
-        <FormField label="Status"><Select value="done" options={[{ value: 'done', label: 'Feita' }, { value: 'not-done', label: 'Não feita' }]} /></FormField>
-        <FormField label="Comentário atualizado"><TextArea value="Bancada finalizada e produtos guardados." /></FormField>
-        <FormField label="Justificativa da correção *"><TextArea placeholder="Explique por que precisa corrigir" /></FormField>
-        <Button variant="secondary" isFullWidth>SUBSTITUIR FOTO</Button>
+        <Stack gap="xs"><Title order={2}>{task?.title ?? 'Tarefa'}</Title><Text tone="muted">Sua execução · Dia aberto</Text></Stack>
+        <FormField label="Status"><Select value={status} onChange={(value) => setStatus(value as 'done' | 'notDone')} options={[{ value: 'done', label: 'Feita' }, { value: 'notDone', label: 'Não feita' }]} /></FormField>
+        <FormField label="Comentário atualizado"><TextArea value={comment} onChange={setComment} /></FormField>
+        <FormField label="Justificativa da correção *"><TextArea value={reason} onChange={setReason} placeholder="Explique por que precisa corrigir" /></FormField>
+        <UploadArea title="Substituir foto" description="Opcional" fileName={file?.name} onFileSelect={setFile} />
         <Text size="xs" tone="muted">Uma foto vigente. A foto anterior e a correção ficam registradas no histórico.</Text>
-        <Button isFullWidth onClick={() => navigate(routes.tasks.completedDetails)}>SALVAR CORREÇÃO</Button>
+        <Button isFullWidth isLoading={mutation.isPending} disabled={!reason.trim()} onClick={() => void save()}>SALVAR CORREÇÃO</Button>
         <Button variant="secondary" isFullWidth onClick={() => navigate(routes.tasks.completedDetails)}>CANCELAR</Button>
       </Stack>
     </Frame>
@@ -268,9 +354,12 @@ function CorrectOwnExecutionView({ navigate }: { navigate: Navigate }) {
 }
 
 function TaskUpdateConflictView({ navigate }: { navigate: Navigate }) {
+  const taskId = useTaskStore((state) => state.selectedTaskId);
+  const executionDraft = useTaskStore((state) => state.executionDraft);
+  const { data: task } = useEmployeeTaskQuery(taskId);
   return (
     <Frame title="Concluir tarefa" backTo={routes.tasks.pendingDetails} navigate={navigate}>
-      <Stack gap="lg"><Title order={2}>Conferir temperatura dos freezers</Title><FormField label="Comentário"><TextArea value="Temperatura registrada: -18°C" /></FormField><Button isFullWidth disabled>CONFIRMAR CONCLUSÃO</Button></Stack>
+      <Stack gap="lg"><Title order={2}>{task?.title ?? 'Tarefa'}</Title><FormField label="Comentário"><TextArea value={executionDraft.comment || task?.comment || ''} readOnly /></FormField><Button isFullWidth disabled>CONFIRMAR CONCLUSÃO</Button></Stack>
       <Dialog title="A tarefa já foi atualizada" action="VER VERSÃO ATUAL" onAction={() => navigate(routes.tasks.completedDetails)}>Outra pessoa concluiu esta tarefa enquanto você preenchia. Nenhuma conclusão duplicada foi criada.</Dialog>
     </Frame>
   );
@@ -287,9 +376,10 @@ function CorrectionRestrictedView({ navigate }: { navigate: Navigate }) {
 }
 
 function EmptyTasksView({ navigate }: { navigate: Navigate }) {
+  const [scope, setScope] = useState<TaskScope>('mine');
   return (
     <Frame title="Tarefas de hoje" action="31 AGO" navigate={navigate} bottomNav="today">
-      <Tabs items={['Minhas', 'Gerais', 'Todas']} active="Minhas" />
+      <Tabs items={['Minhas', 'Gerais', 'Todas']} active={tabByScope[scope]} onChange={(tab) => setScope(scopeByTab[tab] ?? 'mine')} />
       <EmptyState title="Tudo certo por aqui" description="Você não tem tarefas pendentes neste filtro. Consulte as tarefas gerais ou todas da unidade.">
         <Button variant="secondary" onClick={() => navigate(routes.tasks.all)}>VER TAREFAS GERAIS</Button>
       </EmptyState>
@@ -300,7 +390,7 @@ function EmptyTasksView({ navigate }: { navigate: Navigate }) {
 export function EmployeeView({ route, navigate }: { route: AppRoute; navigate: Navigate }) {
   switch (route) {
     case routes.tasks.today: return <TodayTasksView navigate={navigate} />;
-    case routes.tasks.all: return <TodayTasksView navigate={navigate} showAll />;
+    case routes.tasks.all: return <TodayTasksView navigate={navigate} initialScope="all" />;
     case routes.tasks.pendingDetails: return <PendingTaskDetailsView navigate={navigate} />;
     case routes.tasks.takeover: return <TakeOverTaskView navigate={navigate} />;
     case routes.tasks.complete: return <CompleteTaskView navigate={navigate} />;

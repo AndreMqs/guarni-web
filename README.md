@@ -31,7 +31,9 @@ npm run lint
 
 A aplicação contém a primeira implementação completa das telas de produto presentes nas referências do Penpot/PDFs. O código da aplicação não depende dos identificadores dos wireframes: arquivos, componentes, rotas e stores usam nomes descritivos baseados em domínio e comportamento.
 
-As telas de tarefas, histórico, usuários, configurações, auditoria e mídia usam dados de demonstração enquanto os respectivos contratos do backend não estiverem disponíveis. Não foram criados endpoints HTTP fictícios.
+As telas de tarefas, histórico, usuários, configurações, auditoria e mídia usam dados de demonstração enquanto os respectivos contratos do backend não estiverem disponíveis. Os dados simulados e seu comportamento ficam exclusivamente em `src/api`; as views nunca consomem mocks diretamente.
+
+O fluxo de dados segue `view → hook do TanStack Query → função de src/api`. Tabs, buscas, filtros, seleção e outros estados puramente visuais são controlados pelo frontend. Quando um endpoint real estiver disponível, a intenção é substituir somente a implementação da função em `src/api`, preservando os hooks e as views.
 
 O login mantém o contrato já previsto para `POST /v1/auth/login`, embora a função de API continue mockada nesta fase.
 

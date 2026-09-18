@@ -1,4 +1,67 @@
-export { login } from './auth.ts'
-export type { LoginResponse } from './auth.ts'
-export { getTodayTasks } from './tasks.ts'
-export type { TodayTask, TodayTasksResponse } from './tasks.ts'
+export { getCurrentUserContext, login } from './auth.ts';
+export type { CurrentUserContext, LoginResponse } from './auth.ts';
+export { completeTask, correctTaskExecution, getClosedDayHistory, getDailyHistory, getTask as getEmployeeTask, getTodayTasks, markTaskNotDone, takeOverTask } from './tasks.ts';
+export type {
+  ClosedDayHistoryResponse,
+  DailyHistoryEvent,
+  DailyHistoryParams,
+  DailyHistoryResponse,
+  HistoryEventCategory,
+  TaskScope,
+  TaskStatus,
+  TodayTask,
+  TodayTasksParams,
+  TodayTasksResponse,
+  CompleteTaskInput,
+  CorrectTaskExecutionInput,
+  MarkTaskNotDoneInput,
+  TakeOverTaskInput,
+} from './tasks.ts';
+export {
+  copyTask,
+  createTask,
+  createUser,
+  getAssignableUsers,
+  getCurrentDaySummary,
+  getHistoryDay,
+  getHistoryTask,
+  getManagementDashboard,
+  getManagementHistory,
+  getTask as getManagementTask,
+  getTaskCatalog,
+  getTasksByDate,
+  getUnitSettings,
+  getUsers,
+  getUser,
+  getUserReassignmentSummary,
+  reassignUserTasks,
+  updateTask,
+  updateUnitSettings,
+  updateUser,
+} from './management.ts';
+export type {
+  CopyTaskInput,
+  CreateTaskInput,
+  CreateUserInput,
+  CurrentDaySummaryResponse,
+  HistoryDay,
+  HistoryDayResponse,
+  HistoryTaskDetails,
+  ManagementDashboardResponse,
+  HistoryDayFilters,
+  HistoryDayTask,
+  HistoryTaskStatus,
+  ManagementTask,
+  ManagementTaskStatus,
+  ManagementRole,
+  ManagementUser,
+  TaskCatalogParams,
+  TaskCatalogPeriod,
+  UnitSettings,
+  UpdateTaskInput,
+  UpdateUserInput,
+  UserReassignmentSummary,
+  ReassignUserTasksInput,
+} from './management.ts';
+export { correctExecution, getAuditEvent, getAuditEvents, getAuditMedia, getLatestAuditCorrection, replaceEvidence } from './audit.ts';
+export type { AuditCategory, AuditCorrectionReceipt, AuditEvent, AuditEventDetailRow, AuditEventsParams, AuditMedia, CorrectExecutionInput, MediaFilter } from './audit.ts';

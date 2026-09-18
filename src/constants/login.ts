@@ -16,4 +16,3 @@ export const loginPageText = {
   loadingTasks: 'Carregando tarefas...',
 } as const
 
-export const mockLoginAccessToken = 'mock-access-token'

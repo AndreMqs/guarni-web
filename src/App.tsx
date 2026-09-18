@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { loginPageText } from './constants/login.ts';
 import { useLoginMutation } from './hooks/index.ts';
 import { routes, type AppRoute } from './navigation';
+import { queryClient } from './queryClient.ts';
 import { AppRouter } from './router/AppRouter.tsx';
 import { LoginView } from './views/Login/index.ts';
 
@@ -25,7 +26,7 @@ function App() {
   const loginMutation = useLoginMutation();
 
   if (accessToken) {
-    return <AppRouter initialRoute={initialRoute} />;
+    return <AppRouter initialRoute={initialRoute} onLogout={() => { queryClient.clear(); setAccessToken(undefined); }} />;
   }
 
   return (

@@ -28,6 +28,7 @@ export const routes = {
     taskCreateRules: 'management/tasks/create/rules',
     taskEditConfirmation: 'management/tasks/edit/confirmation',
     users: 'management/users',
+    userCreate: 'management/users/create',
     userEdit: 'management/users/edit',
     userReassignment: 'management/users/reassignment',
     tasksByDate: 'management/tasks/by-date',

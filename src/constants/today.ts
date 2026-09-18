@@ -23,13 +23,3 @@ export const todayPageText = {
   moreNavigationLabel: 'Mais',
   moreNavigationIcon: '☰',
 } as const
-
-export const mockTodayTasks = {
-  dateLabel: 'Hoje, segunda-feira · 31 ago',
-  summary: { done: 4, pending: 3, notDone: 1 },
-  tasks: [
-    { id: 'task-1', title: 'Higienizar bancada da cozinha', dueLabel: 'até 10:00', evidenceLabel: 'Foto obrigatória' },
-    { id: 'task-2', title: 'Conferir temperatura dos freezers', dueLabel: 'até 15:00', evidenceLabel: 'Evidência opcional' },
-    { id: 'task-3', title: 'Organizar estoque seco', dueLabel: 'sem horário', evidenceLabel: 'Foto opcional' },
-  ],
-} as const

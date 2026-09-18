@@ -1,6 +1,6 @@
 # Constantes
 
-Textos, números fixos, limites, padrões e dados mockados usados pela aplicação
+Textos, números fixos, limites e padrões usados pela aplicação. Dados mockados ficam exclusivamente em `src/api`
 devem ser declarados nesta pasta e agrupados por contexto de negócio.
 
 Os nomes precisam descrever a finalidade do valor. Views, APIs, hooks e schemas

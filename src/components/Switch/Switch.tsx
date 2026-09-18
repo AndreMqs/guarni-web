@@ -1,19 +1,14 @@
 import { Switch as MantineSwitch } from '@mantine/core';
-import type { ChangeEvent } from 'react';
 import type { SwitchProps } from './Switch.types';
 
-export function Switch({ defaultChecked, checked, onChange, disabled, ariaLabel }: SwitchProps) {
-  function handleChange(event: ChangeEvent<HTMLInputElement>) {
-    onChange?.(event.currentTarget.checked);
-  }
-
+export function Switch({ checked, defaultChecked, onChange, ariaLabel, disabled = false }: SwitchProps) {
   return (
     <MantineSwitch
-      defaultChecked={defaultChecked}
       checked={checked}
-      onChange={onChange ? handleChange : undefined}
-      disabled={disabled}
+      defaultChecked={checked === undefined ? defaultChecked : undefined}
+      onChange={(event) => onChange?.(event.currentTarget.checked)}
       aria-label={ariaLabel}
+      disabled={disabled}
     />
   );
 }
