@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { getTodayDate } from '../utils/date';
 
 export type ManagementUnitId = 'tatuape' | 'liberdade';
 export type TaskAssignmentType = 'general' | 'personal';
@@ -15,15 +16,15 @@ export type TaskDraft = {
   isCommentEnabled: boolean;
 };
 
-const initialTaskDraft: TaskDraft = {
+const createInitialTaskDraft = (): TaskDraft => ({
   title: '',
   description: '',
   assignmentType: 'general',
-  executionDate: '2026-09-01',
+  executionDate: getTodayDate(),
   dueTime: '10:00',
   isEvidenceRequired: true,
   isCommentEnabled: true,
-};
+});
 
 type ManagementStore = {
   activeUnitId: ManagementUnitId;
@@ -44,11 +45,11 @@ export const useManagementStore = create<ManagementStore>((set) => ({
   selectedTaskId: 'management-task-2',
   selectedUserId: 'user-carla',
   selectedHistoryTaskId: 'history-task-2',
-  taskDraft: initialTaskDraft,
+  taskDraft: createInitialTaskDraft(),
   setActiveUnit: (activeUnitId) => set({ activeUnitId }),
   setSelectedTaskId: (selectedTaskId) => set({ selectedTaskId }),
   setSelectedUserId: (selectedUserId) => set({ selectedUserId }),
   setSelectedHistoryTaskId: (selectedHistoryTaskId) => set({ selectedHistoryTaskId }),
   updateTaskDraft: (patch) => set((state) => ({ taskDraft: { ...state.taskDraft, ...patch } })),
-  resetTaskDraft: () => set({ taskDraft: initialTaskDraft }),
+  resetTaskDraft: () => set({ taskDraft: createInitialTaskDraft() }),
 }));

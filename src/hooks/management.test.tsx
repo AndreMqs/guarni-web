@@ -21,7 +21,7 @@ it.each([
 })
 
 it('invalidates management lists and dashboard after task creation', async () => {
-  const keys = [managementQueryKeys.taskCatalog({ period: 'all' }), managementQueryKeys.dashboard('tatuape')]
+  const keys = [managementQueryKeys.taskCatalog({ period: 'all', month: '2026-09' }), managementQueryKeys.dashboard('tatuape')]
   keys.forEach(key => context.queryClient.setQueryData(key, []))
   context.queryClient.setQueryData(['unrelated'], 'preserved')
   const { result } = renderHook(() => useCreateTaskMutation(), { wrapper: context.wrapper })

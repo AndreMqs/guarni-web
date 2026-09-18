@@ -13,7 +13,7 @@ function readHash(): AppRoute | undefined {
 }
 
 export const useNavigationStore = create<NavigationState>((set) => ({
-  route: readHash() ?? routes.owner.menu,
+  route: readHash() ?? routes.management.dashboard,
   navigate: (route) => {
     window.history.pushState(null, '', `#/${route}`);
     set({ route });

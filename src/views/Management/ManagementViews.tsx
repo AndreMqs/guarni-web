@@ -56,6 +56,8 @@ import {
 } from '../../hooks';
 import { routes, type AppRoute, type Navigate } from '../../navigation';
 import { useManagementStore } from '../../stores';
+import { getTodayDate, isValidMonth } from '../../utils/date';
+import type { NavigationMode } from '../../navigation/types';
 
 const periodByTab: Record<string, TaskCatalogPeriod> = {
   Todas: 'all',
@@ -77,7 +79,7 @@ const managementTaskStatusPresentation = {
   notDone: { label: 'Não feita', tone: 'danger' as const },
 };
 
-function ManagerDashboardView({ navigate, isUnitSelectionOpen = false }: { navigate: Navigate; isUnitSelectionOpen?: boolean }) {
+function ManagerDashboardView({ navigate, isUnitSelectionOpen = false, navMode }: { navigate: Navigate; isUnitSelectionOpen?: boolean; navMode: NavigationMode }) {
   const activeUnitId = useManagementStore((state) => state.activeUnitId);
   const setActiveUnit = useManagementStore((state) => state.setActiveUnit);
   const [draftUnitId, setDraftUnitId] = useState(activeUnitId);
@@ -88,7 +90,7 @@ function ManagerDashboardView({ navigate, isUnitSelectionOpen = false }: { navig
   }, [activeUnitId]);
 
   return (
-    <Frame title={data?.activeUnit.name ?? 'Unidade'} action="TROCAR" onAction={() => navigate(routes.management.unitSelection)} navigate={navigate} bottomNav="today" navMode="management">
+    <Frame title={data?.activeUnit.name ?? 'Unidade'} action="TROCAR" onAction={() => navigate(routes.management.unitSelection)} navigate={navigate} bottomNav="today" navMode={navMode}>
       <Stack gap="lg">
         {isLoading ? <Text tone="muted">Carregando painel…</Text> : data && (
           <>
@@ -148,19 +150,29 @@ function ManagementMenuView({ navigate, onLogout }: { navigate: Navigate; onLogo
 
 function TaskCatalogView({ navigate }: { navigate: Navigate }) {
   const [search, setSearch] = useState('');
-  const [period, setPeriod] = useState<TaskCatalogPeriod>('all');
+  const [period, setPeriod] = useState<TaskCatalogPeriod>('today');
+  const [month, setMonth] = useState(() => getTodayDate().slice(0, 7));
   const setSelectedTaskId = useManagementStore((state) => state.setSelectedTaskId);
   const resetTaskDraft = useManagementStore((state) => state.resetTaskDraft);
-  const { data: tasks = [], isLoading } = useTaskCatalogQuery({ period, search });
+  const { data: tasks = [], isLoading } = useTaskCatalogQuery({ period, search, month });
 
   return (
     <Frame title="Cadastro de tarefas" action="+ NOVA" onAction={() => { resetTaskDraft(); navigate(routes.management.taskCreateDetails); }} backTo={routes.management.menu} navigate={navigate}>
       <Stack gap="lg">
         <SearchField placeholder="Buscar atividade" value={search} onChange={setSearch} />
-        <Tabs items={['Todas', 'Hoje', 'Futuras', 'Passadas']} active={tabByPeriod[period]} onChange={(tab) => setPeriod(periodByTab[tab] ?? 'all')} />
+        <TextInput label="Mês de execução" type="month" required value={month} onChange={(value) => {
+          setMonth(value);
+          if (period === 'today' && value !== getTodayDate().slice(0, 7)) setPeriod('all');
+        }} />
+        <Text size="xs" tone="muted">Os filtros e a busca consideram apenas o mês selecionado. Mais recentes primeiro.</Text>
+        <Tabs items={['Todas', 'Hoje', 'Futuras', 'Passadas']} active={tabByPeriod[period]} onChange={(tab) => {
+          const nextPeriod = periodByTab[tab] ?? 'today';
+          setPeriod(nextPeriod);
+          if (nextPeriod === 'today') setMonth(getTodayDate().slice(0, 7));
+        }} />
         <Text size="xs" tone="muted">{isLoading ? 'Carregando tarefas…' : `${tasks.length} tarefas encontradas`}</Text>
         <Stack>
-          {!isLoading && tasks.length === 0 ? <EmptyState title="Nenhuma tarefa encontrada" description="Altere a busca ou o período selecionado." /> : tasks.map((task) => {
+          {!isValidMonth(month) ? <EmptyState title="Selecione um mês" description="Escolha o mês de execução para consultar as tarefas." /> : !isLoading && tasks.length === 0 ? <EmptyState title="Nenhuma tarefa encontrada" description="Altere a busca ou o período selecionado." /> : tasks.map((task) => {
             const presentation = managementTaskStatusPresentation[task.status];
             return (
               <TaskCard key={task.id} title={task.title} status={presentation.label} tone={presentation.tone} due={task.dateLabel} assignee={task.assignee}
@@ -430,7 +442,7 @@ function UserReassignmentView({ navigate }: { navigate: Navigate }) {
 }
 
 function TasksByDateView({ navigate }: { navigate: Navigate }) {
-  const [date, setDate] = useState('2026-09-01');
+  const [date, setDate] = useState(getTodayDate);
   const setSelectedTaskId = useManagementStore((state) => state.setSelectedTaskId);
   const { data: tasks = [], isLoading } = useTasksByDateQuery(date);
   return (
@@ -528,14 +540,14 @@ function TaskCreatedView({ navigate }: { navigate: Navigate }) {
   );
 }
 
-function ManagementHistoryView({ navigate }: { navigate: Navigate }) {
+function ManagementHistoryView({ navigate, navMode }: { navigate: Navigate; navMode: NavigationMode }) {
   const [month, setMonth] = useState('2026-08');
   const [draftMonth, setDraftMonth] = useState('2026-08');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const { data, isLoading } = useManagementHistoryQuery(month);
 
   return (
-    <Frame title="Histórico" action="FILTRAR" onAction={() => { setDraftMonth(month); setIsFilterOpen(true); }} navigate={navigate} bottomNav="history" navMode="management">
+    <Frame title="Histórico" action="FILTRAR" onAction={() => { setDraftMonth(month); setIsFilterOpen(true); }} navigate={navigate} bottomNav="history" navMode={navMode}>
       <Stack gap="lg">
         <Select
           value={month}
@@ -609,14 +621,18 @@ function PreviousDayDetailsView({ navigate, showFilters = false }: { navigate: N
       <Stack gap="lg">
         <Group justify="space-between"><Text size="xs" tone="muted">{data ? `Dia encerrado às ${data.closedAtLabel}` : 'Carregando dia…'}</Text><StatusBadge tone="neutral">Encerrado</StatusBadge></Group>
         {data && <SummaryMetrics values={[{ value: data.summary.done, label: 'feitas', tone: 'success' }, { value: data.summary.notDone, label: 'não feitas', tone: 'danger' }, { value: data.summary.total, label: 'total' }]} />}
-        <Tabs
-          items={['Todas', hasStatusFilter ? 'Status: filtrado' : 'Status: todos', hasAssigneeFilter ? 'Responsável: filtrado' : 'Responsável: todos']}
-          active={hasStatusFilter || hasAssigneeFilter ? (hasStatusFilter ? 'Status: filtrado' : 'Responsável: filtrado') : 'Todas'}
-          onChange={(value) => {
-            if (value === 'Todas') setFilters({ statuses: allStatuses, assigneeId: 'all' });
-            else openFilters();
-          }}
-        />
+        <Stack gap="xs">
+          <Group justify="space-between">
+            <Button variant="secondary" size="sm" onClick={openFilters} aria-haspopup="dialog" aria-expanded={isFilterOpen}>
+              Filtros{hasStatusFilter || hasAssigneeFilter ? ` (${Number(hasStatusFilter) + Number(hasAssigneeFilter)})` : ''}
+            </Button>
+            {(hasStatusFilter || hasAssigneeFilter) && <TextButton onClick={() => setFilters({ statuses: allStatuses, assigneeId: 'all' })}>Limpar filtros</TextButton>}
+          </Group>
+          <Text size="sm" tone="muted">
+            Status: {hasStatusFilter ? filters.statuses.map((status) => ({ done: 'Feitas', notDone: 'Não feitas', autoClosed: 'Encerradas automaticamente' })[status]).join(', ') : 'todos'}
+            {' · '}Responsável: {hasAssigneeFilter ? users.find((user) => user.id === filters.assigneeId)?.name ?? 'selecionado' : 'todos'}
+          </Text>
+        </Stack>
         <Stack>
           {isLoading ? <Text size="sm" tone="muted">Carregando tarefas…</Text> : data?.tasks.length ? data.tasks.map((task) => (
             <TaskCard
@@ -720,7 +736,7 @@ function CopyTaskView({ navigate }: { navigate: Navigate }) {
   const mutation = useCopyTaskMutation();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [executionDate, setExecutionDate] = useState('2026-09-01');
+  const [executionDate, setExecutionDate] = useState(getTodayDate);
   const [isEvidenceRequired, setIsEvidenceRequired] = useState(true);
 
   useEffect(() => {
@@ -776,9 +792,9 @@ function TaskCopyCreatedView({ navigate }: { navigate: Navigate }) {
   );
 }
 
-export function ManagementView({ route, navigate, onLogout }: { route: AppRoute; navigate: Navigate; onLogout: () => void }) {
+export function ManagementView({ route, navigate, onLogout, navMode = 'management' }: { route: AppRoute; navigate: Navigate; onLogout: () => void; navMode?: NavigationMode }) {
   switch (route) {
-    case routes.management.dashboard: return <ManagerDashboardView navigate={navigate} />;
+    case routes.management.dashboard: return <ManagerDashboardView navigate={navigate} navMode={navMode} />;
     case routes.management.menu: return <ManagementMenuView navigate={navigate} onLogout={onLogout} />;
     case routes.management.taskCatalog: return <TaskCatalogView navigate={navigate} />;
     case routes.management.taskCreateDetails: return <TaskDetailsFormView navigate={navigate} />;
@@ -794,13 +810,13 @@ export function ManagementView({ route, navigate, onLogout }: { route: AppRoute;
     case routes.management.unitSettings: return <UnitSettingsView navigate={navigate} />;
     case routes.management.taskCreateReview: return <TaskReviewView navigate={navigate} />;
     case routes.management.taskCreated: return <TaskCreatedView navigate={navigate} />;
-    case routes.management.history: return <ManagementHistoryView navigate={navigate} />;
+    case routes.management.history: return <ManagementHistoryView navigate={navigate} navMode={navMode} />;
     case routes.management.previousDayDetails: return <PreviousDayDetailsView navigate={navigate} />;
     case routes.management.previousDayTaskDetails: return <PreviousDayTaskDetailsView navigate={navigate} />;
     case routes.management.historyFilters: return <PreviousDayDetailsView navigate={navigate} showFilters />;
     case routes.management.previousDaySummary: return <PreviousDaySummaryView navigate={navigate} />;
     case routes.management.currentDaySummary: return <CurrentDaySummaryView navigate={navigate} />;
-    case routes.management.unitSelection: return <ManagerDashboardView navigate={navigate} isUnitSelectionOpen />;
+    case routes.management.unitSelection: return <ManagerDashboardView navigate={navigate} navMode={navMode} isUnitSelectionOpen />;
     case routes.management.taskCopy: return <CopyTaskView navigate={navigate} />;
     case routes.management.taskCopyCreated: return <TaskCopyCreatedView navigate={navigate} />;
     default: return null;

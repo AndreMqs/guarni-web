@@ -1,3 +1,5 @@
+import { getTodayDate, isValidMonth } from '../utils/date';
+
 export type TaskCatalogPeriod = 'all' | 'today' | 'future' | 'past';
 export type ManagementTaskStatus = 'pending' | 'done' | 'notDone';
 export type HistoryTaskStatus = 'done' | 'notDone' | 'autoClosed';
@@ -19,6 +21,7 @@ export type ManagementTask = {
 };
 
 export type TaskCatalogParams = {
+  month: string;
   period: TaskCatalogPeriod;
   search?: string;
 };
@@ -215,16 +218,13 @@ const mockHistoryTaskDetails: Record<string, HistoryTaskDetails> = {
   'history-task-4': { ...mockHistoryTasks[3], reason: 'Não concluída até o fechamento do dia', evidenceLabel: 'Nenhuma', timeline: [{ title: 'Encerrada automaticamente', meta: '03:00 · Sistema' }] },
 };
 
-const today = '2026-09-01';
-
 function normalizeSearch(value = '') {
   return value.trim().toLocaleLowerCase('pt-BR');
 }
 
 function formatDateLabel(date: string) {
-  const [, month, day] = date.split('-');
-  const monthLabel = month === '08' ? 'ago' : month === '09' ? 'set' : month;
-  return `${Number(day)} ${monthLabel}`;
+  const [year, month, day] = date.split('-').map(Number);
+  return new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month: 'short' }).format(new Date(year, month - 1, day));
 }
 
 export async function getManagementDashboard(unitId: string): Promise<ManagementDashboardResponse> {
@@ -233,6 +233,8 @@ export async function getManagementDashboard(unitId: string): Promise<Management
 }
 
 export async function getTaskCatalog(params: TaskCatalogParams): Promise<ManagementTask[]> {
+  if (!isValidMonth(params.month)) throw new Error('Selecione um mês válido para consultar as tarefas.');
+  const today = getTodayDate();
   const search = normalizeSearch(params.search);
   const tasks = mockTasks.filter((task) => {
     const matchesPeriod =
@@ -241,9 +243,9 @@ export async function getTaskCatalog(params: TaskCatalogParams): Promise<Managem
       || (params.period === 'future' && task.executionDate > today)
       || (params.period === 'past' && task.executionDate < today);
     const matchesSearch = !search || `${task.title} ${task.assignee}`.toLocaleLowerCase('pt-BR').includes(search);
-    return matchesPeriod && matchesSearch;
+    return task.executionDate.startsWith(`${params.month}-`) && matchesPeriod && matchesSearch;
   });
-  return Promise.resolve(tasks.map((task) => ({ ...task })));
+  return Promise.resolve(tasks.sort((a, b) => b.executionDate.localeCompare(a.executionDate)).map((task) => ({ ...task })));
 }
 
 export async function getAssignableUsers(search = ''): Promise<ManagementUser[]> {
@@ -360,7 +362,7 @@ export async function getUser(userId: string): Promise<ManagementUser | undefine
 
 export async function getUserReassignmentSummary(userId: string): Promise<UserReassignmentSummary> {
   const assignedTasks = mockTasks.filter((task) => task.assigneeId === userId && task.status === 'pending');
-  const futurePersonalTasks = assignedTasks.filter((task) => task.executionDate > today).length;
+  const futurePersonalTasks = assignedTasks.filter((task) => task.executionDate > getTodayDate()).length;
   return Promise.resolve({
     pendingTasks: assignedTasks.length,
     futurePersonalTasks,

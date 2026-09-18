@@ -4,6 +4,7 @@ import { Group } from '../Group';
 import { Text } from '../Text';
 import { UnstyledButton } from '../UnstyledButton';
 import type { BottomNavigationProps, NavigationItemKey } from './BottomNavigation.types';
+import styles from './BottomNavigation.module.scss';
 
 export function BottomNavigation({ active, navigate, mode = 'employee' }: BottomNavigationProps) {
   const destinations = mode === 'employee'
@@ -25,7 +26,7 @@ export function BottomNavigation({ active, navigate, mode = 'employee' }: Bottom
   return (
     <Group
       grow
-      gap={0}
+      gap={6}
       style={{
         borderTop: '1px solid var(--mantine-color-gray-3)',
         position: 'sticky',
@@ -37,12 +38,14 @@ export function BottomNavigation({ active, navigate, mode = 'employee' }: Bottom
       {items.map((item) => (
         <UnstyledButton
           key={item.id}
+          className={styles.item}
+          ariaLabel={item.label}
           onClick={() => handleNavigation(item.id, navigate)}
           ariaCurrent={active === item.id ? 'page' : undefined}
         >
           <Group gap={4} justify="center">
             <Text>{item.icon}</Text>
-            <Text size="xs" weight={active === item.id ? 700 : 400}>{item.label}</Text>
+            <Text size="sm" weight={active === item.id ? 700 : 400}>{item.label}</Text>
           </Group>
         </UnstyledButton>
       ))}

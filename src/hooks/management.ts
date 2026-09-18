@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { isValidMonth } from '../utils/date';
 import {
   copyTask,
   createTask,
@@ -55,7 +56,7 @@ export function useManagementDashboardQuery(unitId: string) {
 }
 
 export function useTaskCatalogQuery(params: TaskCatalogParams) {
-  return useQuery({ queryKey: managementQueryKeys.taskCatalog(params), queryFn: () => getTaskCatalog(params) });
+  return useQuery({ queryKey: managementQueryKeys.taskCatalog(params), queryFn: () => getTaskCatalog(params), enabled: isValidMonth(params.month) });
 }
 
 export function useTaskQuery(taskId: string) {

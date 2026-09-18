@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createTask,
   createUser,
@@ -11,7 +11,10 @@ import {
 } from './management';
 
 describe('management api mock', () => {
+  afterEach(() => vi.useRealTimers());
   it('filters catalog by period and search after creating a task', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 8, 1, 12));
     const created = await createTask({
       title: 'Conferir teste de integração',
       assignmentType: 'general',
@@ -21,7 +24,7 @@ describe('management api mock', () => {
       isCommentEnabled: true,
     });
 
-    const future = await getTaskCatalog({ period: 'future', search: 'integração' });
+    const future = await getTaskCatalog({ period: 'future', month: '2026-09', search: 'integração' });
     expect(future.some((task) => task.id === created.id)).toBe(true);
   });
 

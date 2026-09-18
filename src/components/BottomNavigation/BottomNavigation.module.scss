@@ -1,0 +1,19 @@
+.item {
+  min-height: 56px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  border-top: 3px solid transparent;
+  color: var(--mantine-color-dimmed);
+  transition: background-color 150ms ease, color 150ms ease;
+
+  &[aria-current='page'] {
+    color: var(--guarni-primary);
+    background: color-mix(in srgb, var(--guarni-primary) 12%, var(--mantine-color-body));
+    border-top-color: var(--guarni-primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--guarni-primary);
+    outline-offset: 2px;
+  }
+}

@@ -5,6 +5,7 @@ import { routes, type AppRoute } from './navigation';
 import { queryClient } from './queryClient.ts';
 import { AppRouter } from './router/AppRouter.tsx';
 import { LoginView } from './views/Login/index.ts';
+import type { NavigationMode } from './navigation/types';
 
 function getInitialRoute(username: string): AppRoute {
   const normalizedUsername = username.toLowerCase();
@@ -17,16 +18,17 @@ function getInitialRoute(username: string): AppRoute {
     return routes.management.dashboard;
   }
 
-  return routes.owner.menu;
+  return routes.management.dashboard;
 }
 
 function App() {
   const [accessToken, setAccessToken] = useState<string>();
-  const [initialRoute, setInitialRoute] = useState<AppRoute>(routes.owner.menu);
+  const [initialRoute, setInitialRoute] = useState<AppRoute>(routes.management.dashboard);
+  const [navigationMode, setNavigationMode] = useState<NavigationMode>('owner');
   const loginMutation = useLoginMutation();
 
   if (accessToken) {
-    return <AppRouter initialRoute={initialRoute} onLogout={() => { queryClient.clear(); setAccessToken(undefined); }} />;
+    return <AppRouter initialRoute={initialRoute} navigationMode={navigationMode} onLogout={() => { queryClient.clear(); window.history.replaceState(null, '', window.location.pathname + window.location.search); setAccessToken(undefined); }} />;
   }
 
   return (
@@ -35,6 +37,7 @@ function App() {
         loginMutation.mutate(credentials, {
           onSuccess: (response) => {
             setInitialRoute(getInitialRoute(credentials.username));
+            setNavigationMode(credentials.username.includes('func') ? 'employee' : credentials.username.includes('ger') ? 'management' : 'owner');
             setAccessToken(response.accessToken);
           },
         });

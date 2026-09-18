@@ -3,13 +3,15 @@ import { AuditView } from '../views/Audit';
 import { EmployeeView } from '../views/Employee';
 import { ManagementView } from '../views/Management';
 import { employeeRoutes, managementRoutes, useNavigationStore, type AppRoute } from '../navigation';
+import type { NavigationMode } from '../navigation/types';
 
 export type AppRouterProps = {
   initialRoute: AppRoute;
   onLogout: () => void;
+  navigationMode?: NavigationMode;
 };
 
-export function AppRouter({ initialRoute, onLogout }: AppRouterProps) {
+export function AppRouter({ initialRoute, onLogout, navigationMode = 'management' }: AppRouterProps) {
   const route = useNavigationStore((state) => state.route);
   const navigate = useNavigationStore((state) => state.navigate);
   const reset = useNavigationStore((state) => state.reset);
@@ -26,7 +28,7 @@ export function AppRouter({ initialRoute, onLogout }: AppRouterProps) {
   }
 
   if (managementRoutes.has(route)) {
-    return <ManagementView route={route} navigate={navigate} onLogout={onLogout} />;
+    return <ManagementView route={route} navigate={navigate} onLogout={onLogout} navMode={navigationMode} />;
   }
 
   return <AuditView route={route} navigate={navigate} onLogout={onLogout} />;

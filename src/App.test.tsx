@@ -26,7 +26,7 @@ async function submitLogin(username: string) {
 it.each([
   ['FUNCIONARIO', routes.tasks.today],
   ['GERENTE', routes.management.dashboard],
-  ['dono', routes.owner.menu],
+  ['dono', routes.management.dashboard],
 ])('opens the initial route for %s after authentication', async (username, route) => {
   await submitLogin(username)
   expect(await screen.findByText(route)).toBeVisible()
@@ -38,7 +38,7 @@ it('shows a login failure and lets the user retry', async () => {
   const user = await submitLogin('dono')
   expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível entrar. Tente novamente.')
   await user.click(screen.getByRole('button', { name: 'Entrar' }))
-  expect(await screen.findByText(routes.owner.menu)).toBeVisible()
+  expect(await screen.findByText(routes.management.dashboard)).toBeVisible()
 })
 
 it('clears cached private data and returns to login on logout', async () => {
