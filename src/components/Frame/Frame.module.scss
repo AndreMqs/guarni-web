@@ -1,0 +1,4 @@
+.viewport { min-height: 100vh; background: var(--mantine-color-gray-1); }
+.screen { min-height: 100vh; max-width: 520px; margin: 0 auto; background: var(--mantine-color-body); display: flex; flex-direction: column; }
+.header { border-bottom: 1px solid var(--mantine-color-gray-3); position: sticky; top: 0; z-index: 5; background: var(--mantine-color-body); padding: var(--mantine-spacing-md); }
+.main { flex: 1; padding: var(--mantine-spacing-md); }

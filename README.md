@@ -1,75 +1,52 @@
-# React + TypeScript + Vite
+# Guarni Web
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend mobile-first do Guarni, checklist operacional para restaurantes.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- React + TypeScript + Vite
+- Mantine encapsulado pelos componentes internos do projeto
+- Zustand para estado compartilhado quando necessário
+- SCSS Modules
+- TanStack Query
+- Zod
+- Vitest + React Testing Library
 
-## React Compiler
+## Executar
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm ci
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+Build, testes e lint:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm run build
+npm test
+npm run lint
 ```
+
+## Implementação atual
+
+A aplicação contém a primeira implementação completa das telas de produto presentes nas referências do Penpot/PDFs. O código da aplicação não depende dos identificadores dos wireframes: arquivos, componentes, rotas e stores usam nomes descritivos baseados em domínio e comportamento.
+
+As telas de tarefas, histórico, usuários, configurações, auditoria e mídia usam dados de demonstração enquanto os respectivos contratos do backend não estiverem disponíveis. Não foram criados endpoints HTTP fictícios.
+
+O login mantém o contrato já previsto para `POST /v1/auth/login`, embora a função de API continue mockada nesta fase.
+
+As referências de design e regras de negócio continuam em `docs/design/guarni/` e `docs/frontend-context.md`.
+
+## Organização
+
+- `src/components`: componentes internos de UI; cada componente reutilizável possui sua própria pasta e encapsula Mantine ou a primitiva visual correspondente
+- `src/views/Employee`: telas e estados da operação diária
+- `src/views/Management`: telas de gestão
+- `src/views/Audit`: auditoria, retenção e estados excepcionais
+- `src/navigation`: rotas descritivas, tipos e store Zustand de navegação
+- `src/theme`: tema semântico centralizado
+- `src/api`, `src/hooks`, `src/schemas`, `src/constants`: contratos e lógica já existentes, organizados por responsabilidade
+
+Views e componentes de negócio não importam Mantine diretamente. Componentes compostos reutilizam os wrappers internos do Guarni, preservando a possibilidade de trocar a implementação visual sem reescrever as telas.
+
+Os wireframes contêm pequenas inconsistências visuais. A implementação preserva conteúdo, hierarquia e fluxos, mas corrige alinhamentos, espaçamentos e responsividade em vez de reproduzir esses defeitos pixel a pixel.

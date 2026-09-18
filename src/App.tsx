@@ -1,36 +1,44 @@
-import { useState } from 'react'
-import { loginPageText } from './constants/login.ts'
-import { useLoginMutation, useTodayTasksQuery } from './hooks/index.ts'
-import { LoginView } from './views/Login/index.ts'
-import { TodayView } from './views/Today/index.ts'
+import { useState } from 'react';
+import { loginPageText } from './constants/login.ts';
+import { useLoginMutation } from './hooks/index.ts';
+import { routes, type AppRoute } from './navigation';
+import { AppRouter } from './router/AppRouter.tsx';
+import { LoginView } from './views/Login/index.ts';
+
+function getInitialRoute(username: string): AppRoute {
+  const normalizedUsername = username.toLowerCase();
+
+  if (normalizedUsername.includes('func')) {
+    return routes.tasks.today;
+  }
+
+  if (normalizedUsername.includes('ger')) {
+    return routes.management.dashboard;
+  }
+
+  return routes.owner.menu;
+}
 
 function App() {
-  const [accessToken, setAccessToken] = useState<string>()
-  const loginMutation = useLoginMutation()
-  const todayTasksQuery = useTodayTasksQuery(Boolean(accessToken))
+  const [accessToken, setAccessToken] = useState<string>();
+  const [initialRoute, setInitialRoute] = useState<AppRoute>(routes.owner.menu);
+  const loginMutation = useLoginMutation();
 
   if (accessToken) {
-    if (todayTasksQuery.data) {
-      return <TodayView {...todayTasksQuery.data} />
-    }
-
-    return <div role="status">{loginPageText.loadingTasks}</div>
+    return <AppRouter initialRoute={initialRoute} />;
   }
 
   return (
     <LoginView
       onSubmit={async (credentials) => {
-        const response = await loginMutation.mutateAsync(credentials)
-        setAccessToken(response.accessToken)
+        const response = await loginMutation.mutateAsync(credentials);
+        setInitialRoute(getInitialRoute(credentials.username));
+        setAccessToken(response.accessToken);
       }}
       isSubmitting={loginMutation.isPending}
-      submitError={
-        loginMutation.isError
-          ? loginPageText.genericSubmitError
-          : undefined
-      }
+      submitError={loginMutation.isError ? loginPageText.genericSubmitError : undefined}
     />
-  )
+  );
 }
 
-export default App
+export default App;
