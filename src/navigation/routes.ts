@@ -32,6 +32,7 @@ export const routes = {
     users: 'management/users',
     userCreate: 'management/users/create',
     userEdit: 'management/users/edit',
+    userPasswordReset: 'management/users/password',
     userReassignment: 'management/users/reassignment',
     userReactivation: 'management/users/reactivation',
     tasksByDate: 'management/tasks/by-date',

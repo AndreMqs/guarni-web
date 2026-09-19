@@ -39,6 +39,13 @@ export const loginSchema = z.strictObject({
 export type LoginFormValues = z.input<typeof loginSchema>
 export type LoginCredentials = z.output<typeof loginSchema>
 
+export const resetUserPasswordSchema = z.object({
+  newPassword: passwordSchema,
+  confirmPassword: passwordSchema,
+}).refine(value => value.newPassword === value.confirmPassword, {
+  message: 'As senhas não coincidem.', path: ['confirmPassword'],
+})
+
 export const changePasswordSchema = z.object({
   currentPassword: passwordSchema,
   newPassword: passwordSchema,

@@ -1,0 +1,43 @@
+import { QueryClientProvider } from '@tanstack/react-query';
+import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, expect, it, vi } from 'vitest';
+import { endMockSession, login } from '../../api/auth';
+import * as management from '../../api/management';
+import { routes } from '../../navigation';
+import { useManagementStore } from '../../stores';
+import { render } from '../../test/render';
+import { createQueryTestContext } from '../../test/query';
+import { ManagementView } from './ManagementViews';
+
+const context = createQueryTestContext();
+afterEach(() => { context.queryClient.clear(); endMockSession(); });
+
+it('opens reset from user editing and validates confirmation before replacing the password', async () => {
+  await login({ username: 'demo', password: 'demonstracao123' });
+  const target = await management.createUser({ name: 'Ana Recuperação', username: 'reset.tela', password: 'anterior-1234', role: 'Funcionária' });
+  useManagementStore.setState({ selectedUserId: target.id });
+  const reset = vi.spyOn(management, 'resetUserPassword');
+  const navigate = vi.fn();
+  const user = userEvent.setup();
+  const view = (route: typeof routes.management.userEdit | typeof routes.management.userPasswordReset) => <QueryClientProvider client={context.queryClient}><ManagementView route={route} navigate={navigate} onLogout={vi.fn()} /></QueryClientProvider>;
+  const { rerender } = render(view(routes.management.userEdit));
+  await user.click(await screen.findByRole('button', { name: 'REDEFINIR SENHA' }));
+  expect(navigate).toHaveBeenCalledWith(routes.management.userPasswordReset);
+  rerender(view(routes.management.userPasswordReset));
+  expect(await screen.findByText(/Defina uma nova senha temporária para Ana Recuperação/)).toBeVisible();
+  expect(screen.queryByLabelText(/Senha atual/)).not.toBeInTheDocument();
+  await user.type(screen.getByLabelText(/^Nova senha temporária/), 'temporaria-1234');
+  const confirmation = screen.getByLabelText(/Confirmar nova senha/);
+  await user.type(confirmation, 'diferente-1234');
+  await user.click(screen.getByRole('button', { name: 'CONFIRMAR REDEFINIÇÃO' }));
+  expect(await screen.findByText('As senhas não coincidem.')).toBeVisible();
+  expect(reset).not.toHaveBeenCalled();
+  await user.clear(confirmation);
+  await user.type(confirmation, 'temporaria-1234');
+  await user.click(screen.getByRole('button', { name: 'CONFIRMAR REDEFINIÇÃO' }));
+  expect(await screen.findByRole('heading', { name: 'Senha redefinida' })).toBeVisible();
+  expect(screen.queryByLabelText(/^Nova senha temporária/)).not.toBeInTheDocument();
+  await expect(login({ username: target.username, password: 'anterior-1234' })).rejects.toThrow('INVALID_CREDENTIALS');
+  await expect(login({ username: target.username, password: 'temporaria-1234' })).resolves.toMatchObject({ role: 'employee' });
+});

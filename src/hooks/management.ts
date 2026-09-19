@@ -19,6 +19,7 @@ import {
   getUser,
   getUserReassignmentSummary,
   reassignUserTasks,
+  resetUserPassword,
   updateTask,
   updateUnitSettings,
   updateUser,
@@ -147,6 +148,10 @@ export function useUpdateUserMutation() {
     mutationFn: (input: UpdateUserInput) => updateUser(input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: managementQueryKeys.all }),
   });
+}
+
+export function useResetUserPasswordMutation() {
+  return useMutation({ mutationFn: resetUserPassword });
 }
 
 export function useUpdateUnitSettingsMutation() {

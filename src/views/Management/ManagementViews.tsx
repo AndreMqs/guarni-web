@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ResetUserPasswordView } from './ResetUserPasswordView';
 import type { HistoryTaskStatus, ManagementRole, TaskCatalogPeriod } from '../../api';
 import {
   Avatar,
@@ -388,6 +389,7 @@ function EditUserView({ navigate }: { navigate: Navigate }) {
         <Text size="xs" tone="muted">Papéis não são cumulativos. A interface e as permissões seguem o papel selecionado.</Text>
         {mutation.isError && <Notice tone="danger">Não foi possível salvar o usuário.</Notice>}
         <Button isFullWidth isLoading={mutation.isPending} disabled={!user} onClick={() => void save()}>SALVAR USUÁRIO</Button>
+        {user && <Button variant="secondary" isFullWidth disabled={mutation.isPending} onClick={() => navigate(routes.management.userPasswordReset)}>REDEFINIR SENHA</Button>}
         {user && <Button variant="secondary" isFullWidth disabled={mutation.isPending} onClick={() => navigate(user.isActive ? routes.management.userReassignment : routes.management.userReactivation)}>{user.isActive ? 'DESATIVAR ACESSO' : 'REATIVAR ACESSO'}</Button>}
       </Stack>
     </Frame>
@@ -789,6 +791,7 @@ export function ManagementView({ route, navigate, onLogout, navMode = 'managemen
     case routes.management.users: return <UsersView navigate={navigate} />;
     case routes.management.userCreate: return <CreateUserView navigate={navigate} />;
     case routes.management.userEdit: return <EditUserView navigate={navigate} />;
+    case routes.management.userPasswordReset: return <ResetUserPasswordView navigate={navigate} />;
     case routes.management.userReassignment: return <UserReassignmentView navigate={navigate} />;
     case routes.management.userReactivation: return <UserReactivationView navigate={navigate} />;
     case routes.management.tasksByDate: return <TasksByDateView navigate={navigate} />;

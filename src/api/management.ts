@@ -1,6 +1,16 @@
 import { getTodayDate, isValidMonth } from '../utils/date';
-import { registerMockUser, updateMockUser } from './mockAccounts';
+import { registerMockUser, updateMockUser, resetMockUserPassword } from './mockAccounts';
+import { requireManagementSession } from './auth';
 import { passwordSchema } from '../schemas/auth';
+
+export async function resetUserPassword(input: { userId: string; newPassword: string }): Promise<void> {
+  requireManagementSession();
+  const result = passwordSchema.safeParse(input.newPassword);
+  if (!result.success) throw new Error(result.error.issues[0].message);
+  const user = await getUser(input.userId);
+  if (!user) throw new Error('Usuário não encontrado.');
+  resetMockUserPassword(user, result.data);
+}
 
 export type TaskCatalogPeriod = 'all' | 'today' | 'future' | 'past';
 export type ManagementTaskStatus = 'pending' | 'done' | 'notDone';

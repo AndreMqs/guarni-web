@@ -20,3 +20,9 @@ export function updateMockUser(user: ManagementUser) {
     if (account.id === user.id) Object.assign(account, { role: navigationRole(user.role), roleLabel: user.role, isActive: user.isActive });
   }
 }
+
+export function resetMockUserPassword(user: ManagementUser, password: string) {
+  const accounts = [...mockAccounts.values()].filter(account => account.id === user.id);
+  if (accounts.length === 0) registerMockUser(user, password);
+  else for (const account of accounts) account.password = password;
+}

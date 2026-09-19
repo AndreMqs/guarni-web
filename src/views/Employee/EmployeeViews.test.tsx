@@ -19,6 +19,19 @@ afterEach(() => {
   useTaskStore.setState(useTaskStore.getInitialState(), true)
 })
 
+it.each(['done', 'notDone'] as const)('shows the recorded %s result with explicit correction and return actions', async status => {
+  vi.spyOn(api, 'getTask').mockResolvedValue({ id: 'result-task', title: 'Conferir estoque', dueLabel: '12:00', assigneeLabel: 'Você', assignmentType: 'personal', isAssignedToCurrentUser: true, canTakeOver: false, status })
+  const navigate = vi.fn()
+  const user = userEvent.setup()
+  render(<QueryClientProvider client={context.queryClient}><EmployeeView route={routes.tasks.completedDetails} navigate={navigate} /></QueryClientProvider>)
+  expect(await screen.findByRole('heading', { name: status === 'done' ? 'Tarefa concluída!' : 'Tarefa não feita' })).toBeVisible()
+  if (status === 'notDone') expect(screen.queryByRole('heading', { name: 'Tarefa concluída!' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'CORRIGIR EXECUÇÃO' }))
+  expect(navigate).toHaveBeenLastCalledWith(routes.tasks.correction)
+  await user.click(screen.getByRole('button', { name: 'VOLTAR PARA HOJE' }))
+  expect(navigate).toHaveBeenLastCalledWith(routes.tasks.today)
+})
+
 it('combines status with the existing tabs and search, retaining status when changing tabs', async () => {
   const fetch = vi.spyOn(api, 'getTodayTasks')
   const user = userEvent.setup()

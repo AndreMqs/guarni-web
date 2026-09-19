@@ -23,6 +23,12 @@ export async function login(credentials: LoginCredentials): Promise<LoginRespons
 
 export function endMockSession() { currentUsername = undefined }
 
+export function requireManagementSession(): void {
+  const account = currentUsername ? mockAccounts.get(currentUsername) : undefined
+  if (!account || !account.isActive) throw new Error('Sessão expirada. Entre novamente.')
+  if (account.role !== 'owner' && account.role !== 'management') throw new Error('Apenas o dono ou gerente pode redefinir senhas.')
+}
+
 export async function getCurrentUserContext(): Promise<CurrentUserContext> {
   const account = mockAccounts.get(currentUsername ?? 'demo')!
   return { id: account.id, name: account.name, username: account.username, roleLabel: account.roleLabel, unitName: 'Restaurante Tatuapé', initials: account.initials }

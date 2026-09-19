@@ -18,6 +18,7 @@ import {
   Select,
   Stack,
   StatusBadge,
+  SuccessState,
   SummaryMetrics,
   Tabs,
   TaskCard,
@@ -265,16 +266,20 @@ function CompletedTaskDetailsView({ navigate }: { navigate: Navigate }) {
   const taskId = useTaskStore((state) => state.selectedTaskId);
   const { data: task, isLoading } = useEmployeeTaskQuery(taskId);
   return (
-    <Frame title="Detalhe da tarefa" action="CORRIGIR" onAction={() => navigate(routes.tasks.correction)} backTo={routes.tasks.today} navigate={navigate}>
+    <Frame title="Detalhe da tarefa" backTo={routes.tasks.today} navigate={navigate}>
       <Stack gap="lg">
-        {isLoading ? <Text tone="muted">Carregando tarefa…</Text> : (
+        {isLoading ? <Text tone="muted">Carregando tarefa…</Text> : !task ? <Notice tone="danger">Não foi possível carregar a tarefa.</Notice> : (
           <>
-            <StatusBadge tone={task?.status === 'notDone' ? 'danger' : 'done'}>{task?.status === 'notDone' ? 'Não feita' : 'Feita'}</StatusBadge>
+            {task.status === 'done' ? <SuccessState title="Tarefa concluída!" description="A conclusão foi registrada. Você já pode voltar às tarefas de hoje." /> : <Notice tone="danger"><Title order={2}>Tarefa não feita</Title><Text>O motivo foi registrado no histórico.</Text></Notice>}
             <Stack gap="xs"><Title order={2}>{task?.title ?? 'Tarefa concluída'}</Title><Text tone="muted">{task?.status === 'notDone' ? 'Registrada como não feita' : `Concluída por ${task?.completedByLabel ?? task?.assigneeLabel ?? 'executor'}`}</Text></Stack>
+            <Stack gap="sm">
+              <Button isFullWidth onClick={() => navigate(routes.tasks.today)}>VOLTAR PARA HOJE</Button>
+              <Button variant="secondary" isFullWidth onClick={() => navigate(routes.tasks.correction)}>CORRIGIR EXECUÇÃO</Button>
+              <Text size="xs" tone="muted">Você pode corrigir sua execução enquanto o dia estiver aberto.</Text>
+            </Stack>
             <Stack><Title order={3}>Evidência</Title>{task?.evidenceName ? <MediaPlaceholder title={task.evidenceName} /> : <Text size="sm" tone="muted">Nenhuma evidência anexada.</Text>}</Stack>
             <Stack gap="xs"><Title order={3}>Comentário</Title><Text>{task?.comment || 'Nenhum comentário informado.'}</Text></Stack>
             <Stack><Title order={3}>Histórico</Title>{task?.timeline?.length ? <Timeline events={task.timeline} /> : <Text size="sm" tone="muted">Sem eventos adicionais.</Text>}</Stack>
-            <Text size="xs" tone="muted">Você pode corrigir sua execução enquanto o dia estiver aberto.</Text>
           </>
         )}
       </Stack>

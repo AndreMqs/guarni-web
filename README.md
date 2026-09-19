@@ -51,6 +51,11 @@ senha e a confirmação. O gerente cadastra uma senha temporária de 12 a 128
 caracteres. Na simulação, cadastros e alterações de senha ficam em memória e
 duram até recarregar a aplicação; não são gravados no armazenamento do navegador.
 
+Em **Usuários → Editar usuário → Redefinir senha**, dono e gerente podem definir
+e confirmar uma nova senha temporária sem consultar a senha atual. A senha anterior
+deixa de funcionar, e o usuário pode escolher sua própria senha no menu Mais.
+A redefinição não altera o perfil nem reativa acessos desativados.
+
 Os filtros usam o componente `FilterPanel`: botão Filtros, resumo aplicado e
 painel com Aplicar filtros, Limpar filtros e Cancelar. Alterações no painel só
 afetam a consulta ao aplicar. As abas Minhas/Gerais/Todas continuam na lista de

@@ -6,6 +6,7 @@ it('sorts by status first and deadline second, with completed tasks last', async
   expect(tasks.map(task => task.id)).toEqual([
     'task-bench-cleaning',
     'task-dining-room',
+    'task-produce-sanitizing',
     'task-dry-storage', // No deadline: last among pending tasks.
     'task-trash-area',
     'task-opening-checklist',
