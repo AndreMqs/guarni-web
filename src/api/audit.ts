@@ -1,3 +1,5 @@
+import { getTodayDate } from '../utils/date';
+
 export type AuditCategory = 'all' | 'tasks' | 'users' | 'media';
 export type MediaFilter = 'all' | 'active' | 'expiring';
 
@@ -18,7 +20,8 @@ export type AuditEvent = {
   category: Exclude<AuditCategory, 'all'>;
   target: 'event' | 'expiredEvidence';
   occurredOn: string;
-  subject?: string;
+  occurredAt: string;
+  subject: string;
   details?: AuditEventDetailRow[];
   media?: { name: string; meta: string };
 };
@@ -37,6 +40,7 @@ export type AuditCorrectionReceipt = {
 };
 
 export type CorrectExecutionInput = {
+  taskTitle?: string;
   newReason: string;
   correctionReason: string;
   evidenceName?: string;
@@ -45,12 +49,12 @@ export type CorrectExecutionInput = {
 let eventSequence = 7;
 let mediaSequence = 4;
 let mockAuditEvents: AuditEvent[] = [
-  { id: 'audit-1', title: 'Tarefa concluída', meta: '10:18 · André · Higienizar bancada', label: 'Feita', tone: 'done', category: 'tasks', target: 'event', occurredOn: '2026-08-31', subject: 'Higienizar bancada da cozinha', details: [{ label: 'Evento', value: 'Conclusão da ocorrência' }, { label: 'Executor', value: 'André Câmara' }, { label: 'Data e hora', value: '31/08/2026 · 10:18:42' }, { label: 'Status final', value: 'Feita' }, { label: 'Comentário', value: 'Bancada finalizada e produtos guardados.' }], media: { name: 'bancada.jpg', meta: 'Foto · 2,4 MB' } },
-  { id: 'audit-2', title: 'Responsável alterado', meta: '11:42 · Rafael assumiu de Marina', label: 'Reatribuição', tone: 'warning', category: 'users', target: 'event', occurredOn: '2026-09-01' },
-  { id: 'audit-3', title: 'Correção registrada pelo dono', meta: '12:08 · André · motivo atualizado', label: 'Correção', tone: 'danger', category: 'tasks', target: 'event', occurredOn: '2026-08-31' },
-  { id: 'audit-4', title: 'Foto expirada', meta: '14:30 · Carla · fechamento-caixa.jpg', label: 'Mídia', tone: 'neutral', category: 'media', target: 'expiredEvidence', occurredOn: '2026-08-31', subject: 'Fotografar fechamento do caixa', details: [{ label: 'Executor', value: 'Carla Mendes' }, { label: 'Data da execução', value: '31/08/2026 · 14:30' }, { label: 'Evidência', value: 'fechamento-caixa.jpg · expirada após 60 dias' }] },
-  { id: 'audit-5', title: 'Usuário desativado', meta: '16:15 · Carla · usuário João', label: 'Usuário', tone: 'neutral', category: 'users', target: 'event', occurredOn: '2026-09-01' },
-  { id: 'audit-6', title: 'Foto substituída em correção', meta: '17:22 · Marina · bancada.jpg', label: 'Mídia', tone: 'warning', category: 'media', target: 'event', occurredOn: '2026-09-01' },
+  { id: 'audit-1', title: 'Tarefa concluída', meta: '10:18 · André · Higienizar bancada', label: 'Feita', tone: 'done', category: 'tasks', target: 'event', occurredOn: '2026-08-31', occurredAt: '2026-08-31T10:18:00-03:00', subject: 'Higienizar bancada da cozinha', details: [{ label: 'Evento', value: 'Conclusão da ocorrência' }, { label: 'Executor', value: 'André Câmara' }, { label: 'Data e hora', value: '31/08/2026 · 10:18:42' }, { label: 'Status final', value: 'Feita' }, { label: 'Comentário', value: 'Bancada finalizada e produtos guardados.' }], media: { name: 'bancada.jpg', meta: 'Foto · 2,4 MB' } },
+  { id: 'audit-2', subject: 'Conferir validade dos molhos', title: 'Responsável alterado', meta: '11:42 · Rafael assumiu de Marina', label: 'Reatribuição', tone: 'neutral', category: 'users', target: 'event', occurredOn: '2026-09-01', occurredAt: '2026-09-01T11:42:00-03:00' },
+  { id: 'audit-3', subject: 'Organizar estoque seco', title: 'Correção registrada pelo dono', meta: '12:08 · André · motivo atualizado', label: 'Correção', tone: 'neutral', category: 'tasks', target: 'event', occurredOn: '2026-08-31', occurredAt: '2026-08-31T12:08:00-03:00' },
+  { id: 'audit-4', title: 'Foto expirada', meta: '14:30 · Carla · fechamento-caixa.jpg', label: 'Mídia', tone: 'neutral', category: 'media', target: 'expiredEvidence', occurredOn: '2026-08-31', occurredAt: '2026-08-31T14:30:00-03:00', subject: 'Fotografar fechamento do caixa', details: [{ label: 'Executor', value: 'Carla Mendes' }, { label: 'Data da execução', value: '31/08/2026 · 14:30' }, { label: 'Evidência', value: 'fechamento-caixa.jpg · expirada após 60 dias' }] },
+  { id: 'audit-5', subject: 'João Vieira', title: 'Usuário desativado', meta: '16:15 · Carla · usuário João', label: 'Usuário', tone: 'neutral', category: 'users', target: 'event', occurredOn: '2026-09-01', occurredAt: '2026-09-01T16:15:00-03:00' },
+  { id: 'audit-6', subject: 'Higienizar bancada da cozinha', title: 'Foto substituída em correção', meta: '17:22 · Marina · bancada.jpg', label: 'Mídia', tone: 'neutral', category: 'media', target: 'event', occurredOn: '2026-09-01', occurredAt: '2026-09-01T17:22:00-03:00' },
 ];
 
 let mockMedia: AuditMedia[] = [
@@ -71,7 +75,7 @@ export async function getAuditEvents(params: AuditEventsParams): Promise<AuditEv
     const matchesEndDate = !params.endDate || event.occurredOn <= params.endDate;
     return matchesCategory && matchesStartDate && matchesEndDate;
   });
-  return Promise.resolve(events.map((event) => ({ ...event })));
+  return Promise.resolve(events.sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt) || Number(b.id.split('-').at(-1)) - Number(a.id.split('-').at(-1))).map((event) => ({ ...event })));
 }
 
 
@@ -99,10 +103,12 @@ export async function correctExecution(input: CorrectExecutionInput): Promise<Au
     title: 'Correção registrada pela gestão',
     meta: `agora · Motivo: ${input.newReason.trim()} · ${input.correctionReason.trim()}`,
     label: 'Correção',
-    tone: 'danger',
+    tone: 'neutral',
     category: 'tasks',
     target: 'event',
-    occurredOn: '2026-09-01',
+    occurredOn: getTodayDate(),
+    occurredAt: new Date().toISOString(),
+    subject: input.taskTitle ?? 'Organizar estoque seco',
   };
   mockAuditEvents = [event, ...mockAuditEvents];
   mockLatestCorrection = {
@@ -112,15 +118,17 @@ export async function correctExecution(input: CorrectExecutionInput): Promise<Au
   if (input.evidenceName) {
     const media: AuditMedia = { id: `media-${mediaSequence++}`, name: input.evidenceName, meta: 'Gestão · agora · correção', expiryLabel: 'Expira em 60 dias', daysUntilExpiry: 60 };
     mockMedia = [media, ...mockMedia];
-    mockAuditEvents = [{ id: `audit-${eventSequence++}`, title: 'Foto substituída em correção', meta: `agora · ${input.evidenceName}`, label: 'Mídia', tone: 'warning', category: 'media', target: 'event', occurredOn: '2026-09-01' }, ...mockAuditEvents];
+    mockAuditEvents = [{ id: `audit-${eventSequence++}`, title: 'Foto substituída em correção', meta: `agora · ${input.evidenceName}`, label: 'Mídia', tone: 'neutral', category: 'media', target: 'event', occurredOn: getTodayDate(), occurredAt: new Date().toISOString(), subject: event.subject }, ...mockAuditEvents];
   }
   return Promise.resolve({ ...event });
 }
 
-export async function replaceEvidence(evidenceName: string, correctionReason: string): Promise<AuditMedia> {
+export async function replaceEvidence(evidenceName: string, correctionReason: string, eventId = 'audit-1'): Promise<AuditMedia> {
+  const event = mockAuditEvents.find(item => item.id === eventId);
+  if (!event) throw new Error('AUDIT_EVENT_NOT_FOUND');
   const media: AuditMedia = { id: `media-${mediaSequence++}`, name: evidenceName, meta: 'Gestão · agora · correção', expiryLabel: 'Expira em 60 dias', daysUntilExpiry: 60 };
   mockMedia = [media, ...mockMedia];
-  mockAuditEvents = [{ id: `audit-${eventSequence++}`, title: 'Foto substituída em correção', meta: `agora · ${evidenceName} · ${correctionReason.trim()}`, label: 'Mídia', tone: 'warning', category: 'media', target: 'event', occurredOn: '2026-09-01' }, ...mockAuditEvents];
+  mockAuditEvents = [{ id: `audit-${eventSequence++}`, title: 'Foto substituída em correção', meta: `agora · ${evidenceName} · ${correctionReason.trim()}`, label: 'Mídia', tone: 'neutral', category: 'media', target: 'event', occurredOn: getTodayDate(), occurredAt: new Date().toISOString(), subject: event.subject }, ...mockAuditEvents];
   mockLatestCorrection = {
     original: { ...mockLatestCorrection.original },
     correction: { title: 'Correção de evidência · agora', authorLabel: 'Gestão', newReason: 'Evidência substituída', correctionReason: correctionReason.trim(), evidenceName },

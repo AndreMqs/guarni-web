@@ -8,6 +8,7 @@ import {
   DetailRows,
   EmptyState,
   FormField,
+  FilterPanel,
   Frame,
   Group,
   MediaPlaceholder,
@@ -16,7 +17,6 @@ import {
   Select,
   Stack,
   StatusBadge,
-  Tabs,
   Text,
   TextArea,
   TextButton,
@@ -27,13 +27,7 @@ import {
 import { useAuditEventQuery, useAuditEventsQuery, useAuditMediaQuery, useCorrectExecutionMutation, useCurrentUserContextQuery, useHistoryTaskQuery, useLatestAuditCorrectionQuery, useReplaceEvidenceMutation } from '../../hooks';
 import { routes, type AppRoute, type Navigate } from '../../navigation';
 import { useAuditStore, useManagementStore } from '../../stores';
-
-const auditCategoryByTab: Record<string, AuditCategory> = {
-  Todos: 'all',
-  Tarefas: 'tasks',
-  Usuários: 'users',
-  Mídias: 'media',
-};
+import { getTodayDate } from '../../utils/date';
 
 const auditTabByCategory: Record<AuditCategory, string> = {
   all: 'Todos',
@@ -51,11 +45,11 @@ function formatAuditDateRange(startDate: string, endDate: string) {
   return `${labels[startDate] ?? startDate} — ${labels[endDate] ?? endDate}`;
 }
 
-function exportAuditEvents(events: Array<{ title: string; meta: string; label: string; category: string }>) {
+function exportAuditEvents(events: Array<{ subject: string; title: string; occurredAt: string; meta: string; label: string; category: string }>) {
   const escapeCsv = (value: string) => `"${value.replaceAll('"', '""')}"`;
   const rows = [
-    ['Evento', 'Detalhes', 'Status', 'Categoria'],
-    ...events.map((event) => [event.title, event.meta, event.label, event.category]),
+    ['Tarefa ou usuário', 'Evento', 'Data e hora', 'Detalhes', 'Status', 'Categoria'],
+    ...events.map((event) => [event.subject, event.title, event.occurredAt, event.meta, event.label, event.category]),
   ];
   const csv = rows.map((row) => row.map(escapeCsv).join(',')).join('\n');
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
@@ -81,7 +75,7 @@ function OwnerMenuView({ navigate, onLogout }: { navigate: Navigate; onLogout: (
         </Card>
         <Stack><Text size="xs" tone="muted" weight={700}>GESTÃO</Text><MenuCard icon="✓" title="Atividades" subtitle="Criar e editar tarefas" onClick={() => navigate(routes.management.taskCatalog)} /><MenuCard icon="●" title="Usuários" subtitle="Gerenciar papéis e acessos" onClick={() => navigate(routes.management.users)} /><MenuCard icon="⚙" title="Configurações" subtitle="Regras da unidade" onClick={() => navigate(routes.management.unitSettings)} /></Stack>
         <Stack><Text size="xs" tone="muted" weight={700}>HISTÓRICO IMUTÁVEL</Text><MenuCard icon="◎" title="Auditoria de negócio" subtitle="Consultar eventos e correções" onClick={() => navigate(routes.audit.events)} /><MenuCard icon="▧" title="Mídias e retenção" subtitle="Evidências e remoções auditadas" onClick={() => navigate(routes.audit.mediaRetention)} /></Stack>
-        <Stack><Text size="xs" tone="muted" weight={700}>CONTA</Text><MenuCard icon="↪" title="Sair" subtitle="Encerrar esta sessão" onClick={onLogout} /></Stack>
+        <Stack><Text size="xs" tone="muted" weight={700}>CONTA</Text><MenuCard icon="⚿" title="Alterar minha senha" subtitle="Atualizar sua senha de acesso" onClick={() => navigate(routes.account.password)} /><MenuCard icon="↪" title="Sair" subtitle="Encerrar esta sessão" onClick={onLogout} /></Stack>
       </Stack>
     </Frame>
   );
@@ -89,42 +83,34 @@ function OwnerMenuView({ navigate, onLogout }: { navigate: Navigate; onLogout: (
 
 function AuditEventsView({ navigate }: { navigate: Navigate }) {
   const [category, setCategory] = useState<AuditCategory>('all');
-  const [dateRange, setDateRange] = useState({ startDate: '2026-08-31', endDate: '2026-09-01' });
-  const [draftDateRange, setDraftDateRange] = useState(dateRange);
-  const [isDateFilterOpen, setIsDateFilterOpen] = useState(false);
+  const [dateRange, setDateRange] = useState({ startDate: '2026-08-31', endDate: getTodayDate() });
   const setSelectedEventId = useAuditStore((state) => state.setSelectedEventId);
   const { data: events = [], isLoading } = useAuditEventsQuery({ category, ...dateRange });
-
-  const openDateFilter = () => {
-    setDraftDateRange(dateRange);
-    setIsDateFilterOpen(true);
-  };
 
   return (
     <Frame title="Auditoria" action="EXPORTAR" onAction={() => exportAuditEvents(events)} backTo={routes.owner.menu} navigate={navigate}>
       <Stack gap="lg">
-        <Card onClick={openDateFilter}><Group justify="space-between"><Text>{formatAuditDateRange(dateRange.startDate, dateRange.endDate)}</Text><Text>▦</Text></Group></Card>
-        <Tabs items={['Todos', 'Tarefas', 'Usuários', 'Mídias']} active={auditTabByCategory[category]} onChange={(tab) => setCategory(auditCategoryByTab[tab] ?? 'all')} />
+        <FilterPanel value={{ ...dateRange, category }} defaultValue={{ startDate: '2026-08-31', endDate: getTodayDate(), category: 'all' as AuditCategory }}
+          onApply={({ startDate, endDate, category }) => { setDateRange({ startDate, endDate }); setCategory(category); }}
+          summary={`${formatAuditDateRange(dateRange.startDate, dateRange.endDate)} · ${auditTabByCategory[category]}`}
+          isValid={draft => Boolean(draft.startDate && draft.endDate && draft.startDate <= draft.endDate)}>
+          {(draft, setDraft) => <Stack>
+            <TextInput label="Data inicial" type="date" value={draft.startDate} onChange={startDate => setDraft({ ...draft, startDate })} />
+            <TextInput label="Data final" type="date" value={draft.endDate} onChange={endDate => setDraft({ ...draft, endDate })} />
+            <FormField label="Categoria"><Select ariaLabel="Categoria" value={draft.category} onChange={value => setDraft({ ...draft, category: value as AuditCategory })} options={Object.entries(auditTabByCategory).map(([value, label]) => ({ value, label }))} /></FormField>
+            {draft.startDate > draft.endDate && <Notice tone="warning">A data inicial deve ser anterior ou igual à data final.</Notice>}
+          </Stack>}
+        </FilterPanel>
         <Text size="xs" tone="muted">{isLoading ? 'Carregando eventos…' : `${events.length} eventos neste filtro`}</Text>
         <Stack>
           {!isLoading && events.length === 0 ? <EmptyState title="Nenhum evento encontrado" description="Selecione outra categoria para consultar o histórico." /> : events.map((event) => (
             <Card key={event.id} onClick={() => { setSelectedEventId(event.id); navigate(event.target === 'expiredEvidence' ? routes.audit.expiredEvidence : routes.audit.eventDetails); }}>
-              <Group wrap="nowrap"><Text size="xl" tone="primary">•</Text><Stack gap={4} style={{ flex: 1 }}><Text weight={700}>{event.title}</Text><Text size="xs" tone="muted">{event.meta}</Text><StatusBadge tone={event.tone}>{event.label}</StatusBadge></Stack><Text>›</Text></Group>
+              <Group wrap="nowrap"><Stack gap={4} style={{ flex: 1 }}><Title order={3}>{event.subject}</Title><Text>{event.title}</Text><Text size="xs" tone="muted">{new Date(event.occurredAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })} · {event.meta}</Text><StatusBadge tone={event.tone}>{event.label}</StatusBadge></Stack><Text>›</Text></Group>
             </Card>
           ))}
         </Stack>
         <Text size="xs" tone="muted">O histórico não pode ser editado ou excluído, nem pelo dono.</Text>
       </Stack>
-      <BottomSheet opened={isDateFilterOpen} onClose={() => setIsDateFilterOpen(false)}>
-        <Stack gap="lg">
-          <Title order={2}>Filtrar período</Title>
-          <FormField label="Data inicial"><TextInput type="date" value={draftDateRange.startDate} onChange={(startDate) => setDraftDateRange((current) => ({ ...current, startDate }))} /></FormField>
-          <FormField label="Data final"><TextInput type="date" value={draftDateRange.endDate} onChange={(endDate) => setDraftDateRange((current) => ({ ...current, endDate }))} /></FormField>
-          {draftDateRange.startDate > draftDateRange.endDate && <Notice tone="warning">A data inicial deve ser anterior ou igual à data final.</Notice>}
-          <Button isFullWidth disabled={draftDateRange.startDate > draftDateRange.endDate} onClick={() => { setDateRange(draftDateRange); setIsDateFilterOpen(false); }}>APLICAR PERÍODO</Button>
-          <Button variant="secondary" isFullWidth onClick={() => { const initialRange = { startDate: '2026-08-31', endDate: '2026-09-01' }; setDraftDateRange(initialRange); setDateRange(initialRange); setIsDateFilterOpen(false); }}>LIMPAR FILTRO</Button>
-        </Stack>
-      </BottomSheet>
     </Frame>
   );
 }
@@ -162,7 +148,7 @@ function ExecutionCorrectionView({ navigate }: { navigate: Navigate }) {
   const mutation = useCorrectExecutionMutation();
 
   const save = async () => {
-    await mutation.mutateAsync({ newReason, correctionReason });
+    await mutation.mutateAsync({ newReason, correctionReason, taskTitle: task?.title });
     navigate(routes.audit.correctionRegistered);
   };
 
@@ -203,13 +189,18 @@ function CorrectionRegisteredView({ navigate }: { navigate: Navigate }) {
 
 function MediaRetentionView({ navigate }: { navigate: Navigate }) {
   const [filter, setFilter] = useState<MediaFilter>('all');
-  const [draftFilter, setDraftFilter] = useState<MediaFilter>('all');
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const { data: media = [], isLoading } = useAuditMediaQuery(filter);
 
   return (
-    <Frame title="Mídias" action="FILTRAR" onAction={() => { setDraftFilter(filter); setIsFilterOpen(true); }} backTo={routes.owner.menu} navigate={navigate}>
+    <Frame title="Mídias" backTo={routes.owner.menu} navigate={navigate}>
       <Stack gap="lg">
+        <FilterPanel<MediaFilter> value={filter} defaultValue="all" onApply={setFilter} activeCount={filter === 'all' ? 0 : 1} summary={{ all: 'Todas as evidências', active: 'Ativas por mais de 7 dias', expiring: 'Expiram em até 7 dias' }[filter]}>
+          {(draft, setDraft) => <FormField label="Expiração"><Select ariaLabel="Expiração" value={draft} onChange={value => setDraft(value as MediaFilter)} options={[
+            { value: 'all', label: 'Todas as evidências' },
+            { value: 'active', label: 'Ativas por mais de 7 dias' },
+            { value: 'expiring', label: 'Expiram em até 7 dias' },
+          ]} /></FormField>}
+        </FilterPanel>
         <Notice><Stack gap={2}><Text weight={700}>Retenção de 60 dias</Text><Text size="sm">Fotos expiram 60 dias após o upload. O histórico permanece disponível.</Text></Stack></Notice>
         <Stack>
           <Title order={2}>Evidências recentes</Title>
@@ -225,24 +216,6 @@ function MediaRetentionView({ navigate }: { navigate: Navigate }) {
         <Stack><Title order={2}>Substituição durante uma correção</Title><Card><Group justify="space-between"><Text>Autor da execução</Text><Text tone="success">No dia aberto</Text></Group></Card><Card><Group justify="space-between"><Text>Gerente ou dono</Text><Text tone="success">Dia aberto ou fechado</Text></Group></Card></Stack>
         <Text size="xs" tone="muted">A foto anterior fica registrada até sua expiração.</Text>
       </Stack>
-      <BottomSheet opened={isFilterOpen} onClose={() => setIsFilterOpen(false)}>
-        <Stack gap="lg">
-          <Title order={2}>Filtrar mídias</Title>
-          <FormField label="Expiração">
-            <Select
-              value={draftFilter}
-              onChange={(value) => setDraftFilter(value as MediaFilter)}
-              options={[
-                { value: 'all', label: 'Todas as evidências' },
-                { value: 'active', label: 'Ativas por mais de 7 dias' },
-                { value: 'expiring', label: 'Expiram em até 7 dias' },
-              ]}
-            />
-          </FormField>
-          <Button isFullWidth onClick={() => { setFilter(draftFilter); setIsFilterOpen(false); }}>APLICAR FILTRO</Button>
-          <Button variant="secondary" isFullWidth onClick={() => { setDraftFilter('all'); setFilter('all'); setIsFilterOpen(false); }}>LIMPAR FILTRO</Button>
-        </Stack>
-      </BottomSheet>
     </Frame>
   );
 }
@@ -256,7 +229,7 @@ function ReplaceEvidenceView({ navigate }: { navigate: Navigate }) {
 
   const save = async () => {
     if (!file) return;
-    await mutation.mutateAsync({ evidenceName: file.name, correctionReason });
+    await mutation.mutateAsync({ evidenceName: file.name, correctionReason, eventId });
     navigate(routes.audit.correctionRegistered);
   };
 

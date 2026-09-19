@@ -28,3 +28,17 @@
     background: var(--guarni-surface-hover);
   }
 }
+
+.success, .danger {
+  color: var(--guarni-surface);
+  border-color: transparent;
+  &:hover:not(:disabled) { filter: brightness(0.9); }
+}
+.success { background: var(--guarni-success); }
+.danger { background: var(--guarni-error); }
+
+.root:disabled, .root[data-disabled] {
+  color: var(--guarni-disabled-text);
+  background: var(--guarni-disabled-background);
+  border-color: var(--guarni-disabled-background);
+}

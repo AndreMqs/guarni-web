@@ -40,11 +40,27 @@ O login continua mockado nesta fase e retorna o perfil usado na navegação da d
 Contas de demonstração (senha `demonstracao123`):
 
 - `demo`: dono, com acesso à gestão e à execução de tarefas.
-- `demo.funcionario`: funcionário, com acesso às tarefas e ao histórico de execução.
+- `demo.funcionario`: funcionário, com acesso às tarefas e ao histórico dentro de cada tarefa.
 
 Dono e gerente acessam **Executar tarefas** no painel Hoje ou no menu Mais.
 Dentro da execução, **Mais → Voltar à gestão** retorna ao painel. Todos os
 usuários ativos podem ser responsáveis por tarefas, independentemente do papel.
+
+Em **Mais → Alterar minha senha**, cada usuário informa a senha atual, a nova
+senha e a confirmação. O gerente cadastra uma senha temporária de 12 a 128
+caracteres. Na simulação, cadastros e alterações de senha ficam em memória e
+duram até recarregar a aplicação; não são gravados no armazenamento do navegador.
+
+Os filtros usam o componente `FilterPanel`: botão Filtros, resumo aplicado e
+painel com Aplicar filtros, Limpar filtros e Cancelar. Alterações no painel só
+afetam a consulta ao aplicar. As abas Minhas/Gerais/Todas continuam na lista de
+tarefas, e a busca textual usa o componente SearchField.
+
+A evidência oferece **Tirar foto** e **Escolher da galeria**. A câmera usa o
+[atributo nativo capture](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/capture)
+com preferência pela câmera traseira nos celulares compatíveis. Em navegadores
+desktop, esse controle pode abrir o seletor de arquivos; a captura deve ser
+validada em um aparelho real.
 
 As referências de design e regras de negócio continuam em `docs/design/guarni/` e `docs/frontend-context.md`.
 

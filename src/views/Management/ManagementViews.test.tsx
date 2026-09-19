@@ -157,24 +157,23 @@ it('requires a replacement and reassigns tasks before deactivating', async () =>
   expect(reassign.mock.invocationCallOrder[0]).toBeLessThan(update.mock.invocationCallOrder[0]);
 });
 
-it('opens on Today and requires a month for every catalog query', async () => {
+it('requires a valid month and applies catalog filters only after confirmation', async () => {
   const fetch = vi.spyOn(api, 'getTaskCatalog');
   const user = userEvent.setup();
   renderView(routes.management.taskCatalog);
-  expect(screen.getByRole('radio', { name: 'Hoje' })).toBeChecked();
-  const month = screen.getByLabelText(/Mês de execução/);
-  expect(month).toHaveValue('2026-11');
   await waitFor(() => expect(fetch).toHaveBeenCalledWith({ month: '2026-11', period: 'today', search: '' }));
-  await user.click(screen.getByRole('radio', { name: 'Todas' }));
-  await waitFor(() => expect(fetch).toHaveBeenLastCalledWith({ month: '2026-11', period: 'all', search: '' }));
-  fireEvent.change(month, { target: { value: '2026-08' } });
-  await waitFor(() => expect(fetch).toHaveBeenLastCalledWith({ month: '2026-08', period: 'all', search: '' }));
-  const calls = fetch.mock.calls.length;
-  fireEvent.change(month, { target: { value: '' } });
-  expect(await screen.findByText('Selecione um mês')).toBeVisible();
-  expect(fetch).toHaveBeenCalledTimes(calls);
-  await user.click(screen.getByRole('radio', { name: 'Hoje' }));
+  await user.click(screen.getByRole('button', { name: 'Filtros' }));
+  const month = await screen.findByLabelText(/Mês de execução/);
   expect(month).toHaveValue('2026-11');
+  expect(screen.getByRole('combobox', { name: 'Período' })).toHaveValue('today');
+  const calls = fetch.mock.calls.length;
+  fireEvent.change(month, { target: { value: '2026-08' } });
+  expect(fetch).toHaveBeenCalledTimes(calls);
+  fireEvent.change(month, { target: { value: '' } });
+  expect(screen.getByRole('button', { name: 'APLICAR FILTROS' })).toBeDisabled();
+  fireEvent.change(month, { target: { value: '2026-08' } });
+  await user.click(screen.getByRole('button', { name: 'APLICAR FILTROS' }));
+  await waitFor(() => expect(fetch).toHaveBeenLastCalledWith({ month: '2026-08', period: 'all', search: '' }));
 });
 
 it('uses filter controls instead of tabs and applies and clears history filters', async () => {
@@ -189,7 +188,8 @@ it('uses filter controls instead of tabs and applies and clears history filters'
   await user.click(screen.getByRole('button', { name: 'APLICAR FILTROS' }));
   expect(await screen.findByText('Status: Não feitas · Responsável: todos')).toBeVisible();
   expect(screen.getByRole('button', { name: 'Filtros (1)' })).toBeVisible();
-  await user.click(screen.getByRole('button', { name: 'Limpar filtros' }));
+  await user.click(screen.getByRole('button', { name: 'Filtros (1)' }));
+  await user.click(await screen.findByRole('button', { name: 'LIMPAR FILTROS' }));
   expect(screen.getByText('Status: todos · Responsável: todos')).toBeVisible();
 });
 

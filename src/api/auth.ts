@@ -1,52 +1,39 @@
-import type { LoginCredentials } from '../schemas/auth.ts'
+import { passwordSchema, type LoginCredentials } from '../schemas/auth'
 import type { NavigationMode } from '../navigation/types'
-import { loginPageText } from '../constants/login'
+import { mockAccounts } from './mockAccounts'
 
-const mockLoginAccessToken = 'mock-access-token'
+export type LoginResponse = { accessToken: string; role: NavigationMode }
+export type CurrentUserContext = { id: string; name: string; username: string; roleLabel: string; unitName: string; initials: string }
+export type ChangePasswordInput = { currentPassword: string; newPassword: string }
+let currentUsername: string | undefined
 
-export type LoginResponse = {
-  accessToken: string
-  role: NavigationMode
-}
-
-let currentRole: NavigationMode = 'owner'
-
-export type CurrentUserContext = {
-  id: string
-  name: string
-  username: string
-  roleLabel: string
-  unitName: string
-  initials: string
-}
-
-/**
- * Autentica o usuário.
- *
- * Mock de autenticação: inclui o perfil para selecionar a navegação da demo.
- * Na integração HTTP, o perfil deve vir da sessão/membership autenticada.
- */
-export async function login(
-  credentials: LoginCredentials,
-): Promise<LoginResponse> {
+/** Mock authentication, with existing development aliases preserved. */
+export async function login(credentials: LoginCredentials): Promise<LoginResponse> {
   const username = credentials.username.trim().toLowerCase()
-  const isDemo = username === loginPageText.demoUsername || username === loginPageText.employeeDemoUsername
-  if (isDemo && credentials.password !== loginPageText.demoPassword) throw new Error('INVALID_CREDENTIALS')
-  currentRole = username === loginPageText.employeeDemoUsername || username.includes('func')
-    ? 'employee' : username.includes('ger') ? 'management' : 'owner'
-  return Promise.resolve({ accessToken: mockLoginAccessToken, role: currentRole })
+  let account = mockAccounts.get(username)
+  if (!account) {
+    const role = username.includes('func') ? 'employee' : username.includes('ger') ? 'management' : 'owner'
+    account = { id: `alias-${username}`, username, name: username, initials: username.slice(0, 2).toUpperCase(), role, roleLabel: role === 'owner' ? 'Dono' : role === 'management' ? 'Gerente' : 'Funcionário', isActive: true, password: credentials.password }
+    mockAccounts.set(username, account)
+  }
+  if (!account.isActive || account.password !== credentials.password) throw new Error('INVALID_CREDENTIALS')
+  currentUsername = username
+  return { accessToken: 'mock-access-token', role: account.role }
 }
 
-/** Mock do contexto que futuramente será composto por /auth/me + membership/unidade. */
+export function endMockSession() { currentUsername = undefined }
+
 export async function getCurrentUserContext(): Promise<CurrentUserContext> {
-  if (currentRole === 'employee') return { id: 'user-rafael', name: 'Rafael Lima', username: loginPageText.employeeDemoUsername, roleLabel: 'Funcionário', unitName: 'Restaurante Tatuapé', initials: 'RL' }
-  if (currentRole === 'management') return { id: 'user-carla', name: 'Carla Mendes', username: 'gerente', roleLabel: 'Gerente', unitName: 'Restaurante Tatuapé', initials: 'CM' }
-  return Promise.resolve({
-    id: 'user-andre',
-    name: 'André Câmara',
-    username: 'andre',
-    roleLabel: 'Dono',
-    unitName: 'Restaurante Tatuapé',
-    initials: 'AC',
-  })
+  const account = mockAccounts.get(currentUsername ?? 'demo')!
+  return { id: account.id, name: account.name, username: account.username, roleLabel: account.roleLabel, unitName: 'Restaurante Tatuapé', initials: account.initials }
+}
+
+export async function changeOwnPassword(input: ChangePasswordInput): Promise<void> {
+  const account = currentUsername ? mockAccounts.get(currentUsername) : undefined
+  if (!account || !account.isActive) throw new Error('Sessão expirada. Entre novamente.')
+  if (input.currentPassword !== account.password) throw new Error('A senha atual está incorreta.')
+  const result = passwordSchema.safeParse(input.newPassword)
+  if (!result.success) throw new Error(result.error.issues[0].message)
+  if (input.currentPassword === input.newPassword) throw new Error('Escolha uma senha diferente da atual.')
+  account.password = input.newPassword
 }

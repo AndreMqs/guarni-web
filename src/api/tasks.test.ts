@@ -18,6 +18,7 @@ describe('tasks api mock', () => {
 
     expect(history.events[0].title).toContain('Assumida');
     expect(history.events[0].meta).toContain('Cobertura do turno');
+    expect((await getTask('task-sauce-expiration'))?.timeline?.[0]).toMatchObject({ title: 'Tarefa assumida', meta: expect.stringContaining('Cobertura do turno') });
   });
 
   it('keeps task details behind the api contract after a completion', async () => {

@@ -1,6 +1,6 @@
 import type { ComponentPropsWithoutRef, ReactNode } from 'react'
 
-export type ButtonVariant = 'primary' | 'secondary'
+export type ButtonVariant = 'primary' | 'secondary' | 'success' | 'danger'
 export type ButtonSize = 'sm' | 'md' | 'lg'
 
 export type ButtonProps = Omit<ComponentPropsWithoutRef<'button'>, 'color'> & {

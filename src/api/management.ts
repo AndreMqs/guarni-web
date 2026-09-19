@@ -1,4 +1,6 @@
 import { getTodayDate, isValidMonth } from '../utils/date';
+import { registerMockUser, updateMockUser } from './mockAccounts';
+import { passwordSchema } from '../schemas/auth';
 
 export type TaskCatalogPeriod = 'all' | 'today' | 'future' | 'past';
 export type ManagementTaskStatus = 'pending' | 'done' | 'notDone';
@@ -355,7 +357,7 @@ export async function copyTask(input: CopyTaskInput): Promise<ManagementTask> {
 
 export async function createUser(input: CreateUserInput): Promise<ManagementUser> {
   const username = input.username.trim().toLocaleLowerCase('pt-BR');
-  if (!input.name.trim() || !username || !input.password.trim()) throw new Error('INVALID_USER');
+  if (!input.name.trim() || !username || !passwordSchema.safeParse(input.password).success) throw new Error('INVALID_USER');
   if (mockUsers.some((user) => user.username.toLocaleLowerCase('pt-BR') === username)) throw new Error('USERNAME_ALREADY_EXISTS');
 
   const initials = input.name
@@ -372,6 +374,7 @@ export async function createUser(input: CreateUserInput): Promise<ManagementUser
     role: input.role,
     isActive: true,
   };
+  registerMockUser(user, input.password);
   mockUsers = [...mockUsers, user];
   return Promise.resolve({ ...user });
 }
@@ -410,6 +413,7 @@ export async function updateUser(input: UpdateUserInput): Promise<ManagementUser
   if (index < 0) throw new Error('USER_NOT_FOUND');
   const next = { ...mockUsers[index], role: input.role, isActive: input.isActive };
   mockUsers[index] = next;
+  updateMockUser(next);
   return Promise.resolve({ ...next });
 }
 

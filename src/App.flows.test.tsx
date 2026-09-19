@@ -68,3 +68,11 @@ it('keeps the employee demo in the execution flow even with a management deep li
   expect(await screen.findByRole('heading', { name: 'Tarefas de hoje' })).toBeVisible();
   await waitFor(() => expect(screen.queryByRole('heading', { name: 'Usuários' })).not.toBeInTheDocument());
 });
+
+it('opens own password settings from the employee More menu', async () => {
+  const user = await signIn('demo.funcionario');
+  await user.click(await screen.findByRole('button', { name: 'Mais' }));
+  await user.click(screen.getByRole('button', { name: /Alterar minha senha/ }));
+  expect(await screen.findByRole('heading', { name: 'Alterar minha senha' })).toBeVisible();
+  expect(screen.getByLabelText(/Senha atual/)).toBeVisible();
+});

@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { ChangePasswordView } from '../views/Account/ChangePasswordView';
 import { AuditView } from '../views/Audit';
 import { EmployeeView } from '../views/Employee';
 import { ManagementView } from '../views/Management';
@@ -13,7 +14,7 @@ export type AppRouterProps = {
 
 export function AppRouter({ initialRoute, onLogout, navigationMode = 'management' }: AppRouterProps) {
   const requestedRoute = useNavigationStore((state) => state.route);
-  const route = navigationMode === 'employee' && !employeeRoutes.has(requestedRoute) ? routes.tasks.today : requestedRoute;
+  const route = requestedRoute === routes.history.daily || requestedRoute === routes.history.closedDay || (navigationMode === 'employee' && requestedRoute !== routes.account.password && !employeeRoutes.has(requestedRoute)) ? routes.tasks.today : requestedRoute;
   const navigate = useNavigationStore((state) => state.navigate);
   const reset = useNavigationStore((state) => state.reset);
 
@@ -23,6 +24,10 @@ export function AppRouter({ initialRoute, onLogout, navigationMode = 'management
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, [initialRoute, reset]);
+
+  if (route === routes.account.password) {
+    return <ChangePasswordView navigate={navigate} backTo={navigationMode === 'employee' ? routes.tasks.menu : navigationMode === 'owner' ? routes.owner.menu : routes.management.menu} />;
+  }
 
   if (employeeRoutes.has(route)) {
     return <EmployeeView route={route} navigate={navigate} navMode={navigationMode} onLogout={onLogout} />;

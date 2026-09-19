@@ -165,6 +165,7 @@ export async function takeOverTask(input: TakeOverTaskInput): Promise<TodayTask>
   task.assigneeLabel = 'Você';
   task.isAssignedToCurrentUser = true;
   task.canTakeOver = false;
+  task.timeline = [{ title: 'Tarefa assumida', meta: `agora · Você · ${input.reason.trim()}` }, ...(task.timeline ?? [])];
   addHistory(`${task.title} — Assumida`, `agora · Você · ${input.reason.trim()}`, 'assignment');
   return Promise.resolve({ ...task });
 }

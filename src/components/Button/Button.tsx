@@ -6,6 +6,8 @@ import type { ButtonProps } from './Button.types.ts'
 const variantClasses = {
   primary: styles.primary,
   secondary: styles.secondary,
+  success: styles.success,
+  danger: styles.danger,
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(

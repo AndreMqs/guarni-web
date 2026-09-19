@@ -20,7 +20,6 @@ afterEach(() => {
 
 it.each([
   [routes.tasks.today, 'employee'],
-  [routes.history.daily, 'employee'],
   [routes.management.dashboard, 'management'],
   [routes.audit.events, 'audit'],
   [routes.owner.menu, 'audit'],
@@ -50,7 +49,7 @@ it('synchronizes programmatic navigation and browser history events', () => {
     window.history.replaceState(null, '', `#/${routes.history.daily}`)
     window.dispatchEvent(new PopStateEvent('popstate'))
   })
-  expect(screen.getByText(`employee:${routes.history.daily}`)).toBeInTheDocument()
+  expect(screen.getByText(`employee:${routes.tasks.today}`)).toBeInTheDocument()
 })
 
 it('forwards logout and removes the history listener on unmount', async () => {

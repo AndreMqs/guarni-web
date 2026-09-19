@@ -33,5 +33,5 @@ export function useCorrectExecutionMutation() {
 
 export function useReplaceEvidenceMutation() {
   const queryClient = useQueryClient();
-  return useMutation({ mutationFn: ({ evidenceName, correctionReason }: { evidenceName: string; correctionReason: string }) => replaceEvidence(evidenceName, correctionReason), onSuccess: () => queryClient.invalidateQueries({ queryKey: auditQueryKeys.all }) });
+  return useMutation({ mutationFn: ({ evidenceName, correctionReason, eventId }: { evidenceName: string; correctionReason: string; eventId?: string }) => replaceEvidence(evidenceName, correctionReason, eventId), onSuccess: () => queryClient.invalidateQueries({ queryKey: auditQueryKeys.all }) });
 }

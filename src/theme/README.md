@@ -39,6 +39,14 @@ fundo, superfície, texto, borda, sucesso, aviso, erro, foco e estados desabilit
 Dimensões da configuração são em pixels de referência e viram `rem` na adaptação,
 mantendo a escala padrão do navegador (16 px) e respeitando o zoom do usuário.
 
+`semanticColors.ts` centraliza os significados usados por badges, avisos e ícones:
+primária/azul para ações e informação; verde para sucesso e conclusão;
+amarelo/âmbar para pendências e atenção; vermelho para erro e ações destrutivas;
+cinza para estados neutros. Eventos de auditoria já registrados são neutros,
+exceto conclusões, que usam sucesso. Não use warning para representar confirmação.
+Botões de conclusão usam `variant="success"`; confirmações destrutivas usam
+`variant="danger"`. Filtros e cancelamento usam `variant="secondary"`.
+
 Os testes de `npm run test:theme` verificam as duas configurações, o fallback,
 a adaptação, as variáveis usadas pelo CSS e contrastes mínimos de 4,5:1 para os
 pares de texto avaliados e 3:1 para foco e bordas. Eles usam Vitest; os testes do

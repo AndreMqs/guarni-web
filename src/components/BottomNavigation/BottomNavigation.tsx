@@ -35,7 +35,7 @@ export function BottomNavigation({ active, navigate, mode = 'employee' }: Bottom
         padding: 'var(--mantine-spacing-xs)',
       }}
     >
-      {items.map((item) => (
+      {items.filter(item => mode !== 'employee' || item.id !== 'history').map((item) => (
         <UnstyledButton
           key={item.id}
           className={styles.item}

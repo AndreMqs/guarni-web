@@ -39,4 +39,5 @@ export { ToggleRow } from './ToggleRow';
 export { UploadArea } from './UploadArea';
 export { IconBadge } from './IconBadge';
 export { Switch } from './Switch';
+export { FilterPanel } from './FilterPanel';
 export { UnstyledButton } from './UnstyledButton';

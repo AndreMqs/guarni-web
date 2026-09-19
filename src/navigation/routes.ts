@@ -1,4 +1,5 @@
 export const routes = {
+  account: { password: 'account/password' },
   tasks: {
     menu: 'tasks/menu',
     today: 'tasks/today',
@@ -65,6 +66,7 @@ export const routes = {
 type Values<T> = T[keyof T];
 
 export type AppRoute =
+  | Values<typeof routes.account>
   | Values<typeof routes.tasks>
   | Values<typeof routes.history>
   | Values<typeof routes.management>
@@ -72,6 +74,7 @@ export type AppRoute =
   | Values<typeof routes.audit>;
 
 export const validRoutes = new Set<AppRoute>([
+  ...Object.values(routes.account),
   ...Object.values(routes.tasks),
   ...Object.values(routes.history),
   ...Object.values(routes.management),

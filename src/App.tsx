@@ -6,6 +6,7 @@ import { queryClient } from './queryClient.ts';
 import { AppRouter } from './router/AppRouter.tsx';
 import { LoginView } from './views/Login/index.ts';
 import type { NavigationMode } from './navigation/types';
+import { endMockSession } from './api/auth';
 
 function App() {
   const [accessToken, setAccessToken] = useState<string>();
@@ -14,7 +15,7 @@ function App() {
   const loginMutation = useLoginMutation();
 
   if (accessToken) {
-    return <AppRouter initialRoute={initialRoute} navigationMode={navigationMode} onLogout={() => { queryClient.clear(); window.history.replaceState(null, '', window.location.pathname + window.location.search); setAccessToken(undefined); }} />;
+    return <AppRouter initialRoute={initialRoute} navigationMode={navigationMode} onLogout={() => { endMockSession(); queryClient.clear(); window.history.replaceState(null, '', window.location.pathname + window.location.search); setAccessToken(undefined); }} />;
   }
 
   return (

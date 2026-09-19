@@ -9,6 +9,7 @@ import {
   DetailRows,
   EmptyState,
   FormField,
+  FilterPanel,
   Frame,
   Group,
   MenuCard,
@@ -22,7 +23,6 @@ import {
   StatusBadge,
   SuccessState,
   SummaryMetrics,
-  Tabs,
   TaskCard,
   Text,
   TextArea,
@@ -59,13 +59,6 @@ import { routes, type AppRoute, type Navigate } from '../../navigation';
 import { useManagementStore } from '../../stores';
 import { getTodayDate, isValidMonth } from '../../utils/date';
 import type { NavigationMode } from '../../navigation/types';
-
-const periodByTab: Record<string, TaskCatalogPeriod> = {
-  Todas: 'all',
-  Hoje: 'today',
-  Futuras: 'future',
-  Passadas: 'past',
-};
 
 const tabByPeriod: Record<TaskCatalogPeriod, string> = {
   all: 'Todas',
@@ -145,7 +138,7 @@ function ManagementMenuView({ navigate, onLogout }: { navigate: Navigate; onLogo
           </Group>
         </Card>
         <Stack><Text size="xs" tone="muted" weight={700}>GESTÃO</Text><MenuCard icon="✓" title="Cadastro de tarefas" subtitle="Criar, editar e copiar tarefas" onClick={() => navigate(routes.management.taskCatalog)} /><MenuCard icon="▦" title="Tarefas por data" subtitle="Consultar tarefas por data" onClick={() => navigate(routes.management.tasksByDate)} /><MenuCard icon="●" title="Usuários" subtitle="Papéis, acessos e responsáveis" onClick={() => navigate(routes.management.users)} /><MenuCard icon="⚙" title="Configurações" subtitle="Visão operacional da unidade" onClick={() => navigate(routes.management.unitSettings)} /></Stack>
-        <Stack><Text size="xs" tone="muted" weight={700}>CONTA</Text><MenuCard icon="↪" title="Sair" subtitle="Encerrar esta sessão" onClick={onLogout} /></Stack>
+        <Stack><Text size="xs" tone="muted" weight={700}>CONTA</Text><MenuCard icon="⚿" title="Alterar minha senha" subtitle="Atualizar sua senha de acesso" onClick={() => navigate(routes.account.password)} /><MenuCard icon="↪" title="Sair" subtitle="Encerrar esta sessão" onClick={onLogout} /></Stack>
       </Stack>
     </Frame>
   );
@@ -163,16 +156,13 @@ function TaskCatalogView({ navigate }: { navigate: Navigate }) {
     <Frame title="Cadastro de tarefas" action="+ NOVA" onAction={() => { resetTaskDraft(); navigate(routes.management.taskCreateDetails); }} backTo={routes.management.menu} navigate={navigate}>
       <Stack gap="lg">
         <SearchField placeholder="Buscar atividade" value={search} onChange={setSearch} />
-        <TextInput label="Mês de execução" type="month" required value={month} onChange={(value) => {
-          setMonth(value);
-          if (period === 'today' && value !== getTodayDate().slice(0, 7)) setPeriod('all');
-        }} />
+        <FilterPanel value={{ month, period }} defaultValue={{ month: getTodayDate().slice(0, 7), period: 'today' as TaskCatalogPeriod }} onApply={(value) => { setMonth(value.month); setPeriod(value.period); }} summary={`Mês: ${month} · ${tabByPeriod[period]}`} isValid={(value) => isValidMonth(value.month)}>
+          {(draft, setDraft) => <Stack>
+            <TextInput label="Mês de execução" type="month" required value={draft.month} onChange={(month) => setDraft({ month, period: draft.period === 'today' && month !== getTodayDate().slice(0, 7) ? 'all' : draft.period })} />
+            <FormField label="Período"><Select ariaLabel="Período" value={draft.period} onChange={(value) => setDraft({ month: value === 'today' ? getTodayDate().slice(0, 7) : draft.month, period: value as TaskCatalogPeriod })} options={Object.entries(tabByPeriod).map(([value, label]) => ({ value, label }))} /></FormField>
+          </Stack>}
+        </FilterPanel>
         <Text size="xs" tone="muted">Os filtros e a busca consideram apenas o mês selecionado. Mais recentes primeiro.</Text>
-        <Tabs items={['Todas', 'Hoje', 'Futuras', 'Passadas']} active={tabByPeriod[period]} onChange={(tab) => {
-          const nextPeriod = periodByTab[tab] ?? 'today';
-          setPeriod(nextPeriod);
-          if (nextPeriod === 'today') setMonth(getTodayDate().slice(0, 7));
-        }} />
         <Text size="xs" tone="muted">{isLoading ? 'Carregando tarefas…' : `${tasks.length} tarefas encontradas`}</Text>
         <Stack>
           {!isValidMonth(month) ? <EmptyState title="Selecione um mês" description="Escolha o mês de execução para consultar as tarefas." /> : !isLoading && tasks.length === 0 ? <EmptyState title="Nenhuma tarefa encontrada" description="Altere a busca ou o período selecionado." /> : tasks.map((task) => {
@@ -241,7 +231,7 @@ function TaskDateFormView({ navigate }: { navigate: Navigate }) {
         <Text size="xs">Etapa 2 de 3</Text><ProgressBar value={66} /><Title order={2}>Quando executar?</Title>
         <FormField label="Data de execução *"><TextInput type="date" value={taskDraft.executionDate} onChange={(executionDate) => updateTaskDraft({ executionDate })} /></FormField>
         <Text size="xs" tone="muted">Escolha hoje ou outra data para esta tarefa.</Text>
-        <Notice tone="warning">Para repetir uma tarefa depois, use Copiar tarefa.</Notice>
+        <Notice>Para repetir uma tarefa depois, use Copiar tarefa.</Notice>
         <Button isFullWidth disabled={!taskDraft.executionDate} onClick={() => navigate(routes.management.taskCreateRules)}>CONTINUAR</Button>
       </Stack>
     </Frame>
@@ -356,13 +346,13 @@ function CreateUserView({ navigate }: { navigate: Navigate }) {
       <Stack gap="lg">
         <FormField label="Nome *"><TextInput value={name} onChange={setName} placeholder="Nome completo" /></FormField>
         <FormField label="Usuário *"><TextInput value={username} onChange={setUsername} placeholder="Nome de acesso" /></FormField>
-        <PasswordField label="Senha *" value={password} onChange={(event) => setPassword(event.currentTarget.value)} isRequired autoComplete="new-password" />
+        <PasswordField helperText="Senha temporária com pelo menos 12 caracteres. O usuário poderá alterá-la em Mais." label="Senha temporária *" value={password} onChange={(event) => setPassword(event.currentTarget.value)} isRequired autoComplete="new-password" />
         <Stack>
           <Text size="sm" weight={600}>Papel na unidade</Text>
           {roles.map((item) => <SelectionCard key={item.title} icon={role === item.title ? '✓' : '○'} title={item.title} subtitle={item.subtitle} isSelected={role === item.title} onClick={() => setRole(item.title)} />)}
         </Stack>
         {mutation.isError && <Notice tone="danger">Não foi possível cadastrar o usuário. Verifique se o username já está em uso.</Notice>}
-        <Button isFullWidth isLoading={mutation.isPending} disabled={!name.trim() || !username.trim() || !password.trim()} onClick={() => void save()}>CADASTRAR USUÁRIO</Button>
+        <Button isFullWidth isLoading={mutation.isPending} disabled={!name.trim() || !username.trim() || password.length < 12} onClick={() => void save()}>CADASTRAR USUÁRIO</Button>
         <Button variant="secondary" isFullWidth onClick={() => navigate(routes.management.users)}>CANCELAR</Button>
       </Stack>
     </Frame>
@@ -438,7 +428,7 @@ function UserReassignmentView({ navigate }: { navigate: Navigate }) {
         <Card><Group justify="space-between"><Stack gap={2}><Text weight={700}>{summary?.futurePersonalTasks ?? 0} atividades pessoais futuras</Text><Text size="xs" tone="muted">Vinculadas diretamente ao usuário</Text></Stack></Group></Card>
         {needsReassignment && <FormField label="Novo responsável *"><Select value={replacementUserId} onChange={setReplacementUserId} options={[{ value: '', label: 'Selecione um usuário' }, ...candidates.map((candidate) => ({ value: candidate.id, label: candidate.name }))]} /></FormField>}
         {(reassignMutation.isError || updateUserMutation.isError) && <Notice tone="danger">Não foi possível concluir a desativação.</Notice>}
-        <Button isFullWidth isLoading={reassignMutation.isPending || updateUserMutation.isPending} disabled={!user || !summary || (needsReassignment && !replacementUserId)} onClick={() => void deactivate()}>DESATIVAR ACESSO</Button>
+        <Button variant="danger" isFullWidth isLoading={reassignMutation.isPending || updateUserMutation.isPending} disabled={!user || !summary || (needsReassignment && !replacementUserId)} onClick={() => void deactivate()}>DESATIVAR ACESSO</Button>
         <Button variant="secondary" isFullWidth onClick={() => navigate(routes.management.userEdit)}>CANCELAR</Button>
       </Stack>
     </Frame>
@@ -455,7 +445,7 @@ function UserReactivationView({ navigate }: { navigate: Navigate }) {
         <Notice tone="warning"><Stack gap={2}><Text weight={700}>Reativar acesso de {user?.name ?? 'usuário'}</Text><Text size="sm">Esta pessoa poderá acessar novamente a unidade com o papel abaixo. As tarefas reatribuídas permanecem com os responsáveis atuais.</Text></Stack></Notice>
         {user && <DetailRows rows={[{ label: 'Usuário', value: user.username }, { label: 'Papel na unidade', value: user.role }]} />}
         {mutation.isError && <Notice tone="danger">Não foi possível reativar o usuário. Tente novamente.</Notice>}
-        <Button isFullWidth isLoading={mutation.isPending} disabled={!user || user.isActive} onClick={() => {
+        <Button variant="success" isFullWidth isLoading={mutation.isPending} disabled={!user || user.isActive} onClick={() => {
           if (user) mutation.mutate({ userId: user.id, role: user.role, isActive: true }, { onSuccess: () => navigate(routes.management.users) });
         }}>CONFIRMAR REATIVAÇÃO</Button>
         <Button variant="secondary" isFullWidth disabled={mutation.isPending} onClick={() => navigate(routes.management.userEdit)}>CANCELAR</Button>
@@ -471,7 +461,9 @@ function TasksByDateView({ navigate }: { navigate: Navigate }) {
   return (
     <Frame title="Tarefas por data" action="▦" backTo={routes.management.menu} navigate={navigate}>
       <Stack gap="lg">
-        <FormField label="Data"><TextInput type="date" value={date} onChange={setDate} /></FormField>
+        <FilterPanel value={date} defaultValue={getTodayDate()} onApply={setDate} summary={`Data: ${date}`} isValid={value => Boolean(value)}>
+          {(draft, setDraft) => <TextInput label="Data de execução" type="date" value={draft} onChange={setDraft} />}
+        </FilterPanel>
         <Text size="xs" tone="muted">{isLoading ? 'Carregando tarefas…' : `${tasks.length} tarefas cadastradas`}</Text>
         <Stack>{!isLoading && tasks.length === 0 ? <EmptyState title="Nenhuma tarefa nesta data" description="Escolha outra data ou cadastre uma nova tarefa." /> : tasks.map((task) => <TaskCard key={task.id} title={task.title} due={task.dateLabel} assignee={task.assignee} evidence={task.evidenceLabel ?? 'Criada manualmente'} onClick={() => { setSelectedTaskId(task.id); navigate(routes.management.taskEditConfirmation); }} />)}</Stack>
         <Notice>Datas futuras são permitidas. Alterações ficam sempre vinculadas à tarefa concreta.</Notice>
@@ -568,22 +560,14 @@ function TaskCreatedView({ navigate }: { navigate: Navigate }) {
 
 function ManagementHistoryView({ navigate, navMode }: { navigate: Navigate; navMode: NavigationMode }) {
   const [month, setMonth] = useState('2026-08');
-  const [draftMonth, setDraftMonth] = useState('2026-08');
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const { data, isLoading } = useManagementHistoryQuery(month);
 
   return (
-    <Frame title="Histórico" action="FILTRAR" onAction={() => { setDraftMonth(month); setIsFilterOpen(true); }} navigate={navigate} bottomNav="history" navMode={navMode}>
+    <Frame title="Histórico" navigate={navigate} bottomNav="history" navMode={navMode}>
       <Stack gap="lg">
-        <Select
-          value={month}
-          onChange={setMonth}
-          options={[
-            { value: '2026-09', label: 'Setembro de 2026' },
-            { value: '2026-08', label: 'Agosto de 2026' },
-          ]}
-          ariaLabel="Mês do histórico"
-        />
+        <FilterPanel value={month} defaultValue="2026-08" onApply={setMonth} summary={`Mês: ${month}`} isValid={isValidMonth}>
+          {(draft, setDraft) => <TextInput label="Mês do histórico" type="month" required value={draft} onChange={setDraft} />}
+        </FilterPanel>
         {data && <Stack><Title order={2}>Resumo dos dias anteriores</Title><SummaryMetrics values={[{ value: `${data.summary.completionRate}%`, label: 'concluídas', tone: 'success' }, { value: data.summary.notDone, label: 'não feitas', tone: 'danger' }, { value: data.summary.total, label: 'total' }]} /></Stack>}
         <Stack>
           <Title order={2}>Dias recentes</Title>
@@ -598,23 +582,6 @@ function ManagementHistoryView({ navigate, navMode }: { navigate: Navigate; navM
           )) : <EmptyState title="Sem histórico neste mês" description="Selecione outro período para consultar dias anteriores." />}
         </Stack>
       </Stack>
-      <BottomSheet opened={isFilterOpen} onClose={() => setIsFilterOpen(false)}>
-        <Stack gap="lg">
-          <Title order={2}>Filtrar histórico</Title>
-          <FormField label="Mês">
-            <Select
-              value={draftMonth}
-              onChange={setDraftMonth}
-              options={[
-                { value: '2026-09', label: 'Setembro de 2026' },
-                { value: '2026-08', label: 'Agosto de 2026' },
-              ]}
-            />
-          </FormField>
-          <Button isFullWidth onClick={() => { setMonth(draftMonth); setIsFilterOpen(false); }}>APLICAR FILTRO</Button>
-          <Button variant="secondary" isFullWidth onClick={() => { setDraftMonth('2026-08'); setMonth('2026-08'); setIsFilterOpen(false); }}>LIMPAR FILTRO</Button>
-        </Stack>
-      </BottomSheet>
     </Frame>
   );
 }
@@ -622,43 +589,28 @@ function ManagementHistoryView({ navigate, navMode }: { navigate: Navigate; navM
 function PreviousDayDetailsView({ navigate, showFilters = false }: { navigate: Navigate; showFilters?: boolean }) {
   const allStatuses: HistoryTaskStatus[] = ['done', 'notDone', 'autoClosed'];
   const [filters, setFilters] = useState({ statuses: allStatuses, assigneeId: 'all' });
-  const [draftStatuses, setDraftStatuses] = useState<HistoryTaskStatus[]>(allStatuses);
-  const [draftAssigneeId, setDraftAssigneeId] = useState('all');
-  const [isFilterOpen, setIsFilterOpen] = useState(showFilters);
   const setSelectedHistoryTaskId = useManagementStore((state) => state.setSelectedHistoryTaskId);
   const { data, isLoading } = useHistoryDayQuery(filters);
-
-  const toggleStatus = (status: HistoryTaskStatus, checked: boolean) => {
-    setDraftStatuses((current) => checked ? [...new Set([...current, status])] : current.filter((item) => item !== status));
-  };
-
-  const openFilters = () => {
-    setDraftStatuses(filters.statuses);
-    setDraftAssigneeId(filters.assigneeId);
-    setIsFilterOpen(true);
-  };
 
   const hasStatusFilter = filters.statuses.length !== allStatuses.length;
   const hasAssigneeFilter = filters.assigneeId !== 'all';
   const users = data?.users ?? [];
 
   return (
-    <Frame title={data?.dateLabel ?? 'Histórico do dia'} action="FILTRAR" onAction={openFilters} backTo={routes.management.history} navigate={navigate}>
+    <Frame title={data?.dateLabel ?? 'Histórico do dia'} backTo={routes.management.history} navigate={navigate}>
       <Stack gap="lg">
         <Group justify="space-between"><Text size="xs" tone="muted">{data ? `Dia encerrado às ${data.closedAtLabel}` : 'Carregando dia…'}</Text><StatusBadge tone="neutral">Encerrado</StatusBadge></Group>
         {data && <SummaryMetrics values={[{ value: data.summary.done, label: 'feitas', tone: 'success' }, { value: data.summary.notDone, label: 'não feitas', tone: 'danger' }, { value: data.summary.total, label: 'total' }]} />}
-        <Stack gap="xs">
-          <Group justify="space-between">
-            <Button variant="secondary" size="sm" onClick={openFilters} aria-haspopup="dialog" aria-expanded={isFilterOpen}>
-              Filtros{hasStatusFilter || hasAssigneeFilter ? ` (${Number(hasStatusFilter) + Number(hasAssigneeFilter)})` : ''}
-            </Button>
-            {(hasStatusFilter || hasAssigneeFilter) && <TextButton onClick={() => setFilters({ statuses: allStatuses, assigneeId: 'all' })}>Limpar filtros</TextButton>}
-          </Group>
-          <Text size="sm" tone="muted">
-            Status: {hasStatusFilter ? filters.statuses.map((status) => ({ done: 'Feitas', notDone: 'Não feitas', autoClosed: 'Encerradas automaticamente' })[status]).join(', ') : 'todos'}
-            {' · '}Responsável: {hasAssigneeFilter ? users.find((user) => user.id === filters.assigneeId)?.name ?? 'selecionado' : 'todos'}
-          </Text>
-        </Stack>
+        <FilterPanel value={filters} defaultValue={{ statuses: allStatuses, assigneeId: 'all' }} initiallyOpen={showFilters} activeCount={Number(hasStatusFilter) + Number(hasAssigneeFilter)}
+          onApply={(value) => { setFilters(value); if (showFilters) navigate(routes.management.previousDayDetails); }}
+          isValid={(value) => value.statuses.length > 0}
+          summary={`Status: ${hasStatusFilter ? filters.statuses.map(status => ({ done: 'Feitas', notDone: 'Não feitas', autoClosed: 'Encerradas automaticamente' })[status]).join(', ') : 'todos'} · Responsável: ${hasAssigneeFilter ? users.find(user => user.id === filters.assigneeId)?.name ?? 'selecionado' : 'todos'}`}>
+          {(draft, setDraft) => <Stack>
+            <Text weight={600}>Status</Text>
+            {allStatuses.map(status => <Checkbox key={status} label={{ done: 'Feitas', notDone: 'Não feitas', autoClosed: 'Pendentes encerradas automaticamente' }[status]} checked={draft.statuses.includes(status)} onChange={checked => setDraft({ ...draft, statuses: checked ? [...draft.statuses, status] : draft.statuses.filter(item => item !== status) })} />)}
+            <FormField label="Responsável"><Select ariaLabel="Responsável" value={draft.assigneeId} onChange={assigneeId => setDraft({ ...draft, assigneeId })} options={[{ value: 'all', label: 'Todos os usuários' }, ...users.map(user => ({ value: user.id, label: user.name }))]} /></FormField>
+          </Stack>}
+        </FilterPanel>
         <Stack>
           {isLoading ? <Text size="sm" tone="muted">Carregando tarefas…</Text> : data?.tasks.length ? data.tasks.map((task) => (
             <TaskCard
@@ -673,22 +625,6 @@ function PreviousDayDetailsView({ navigate, showFilters = false }: { navigate: N
           )) : <EmptyState title="Nenhuma tarefa encontrada" description="Altere os filtros para consultar outras ocorrências." />}
         </Stack>
       </Stack>
-      <BottomSheet opened={isFilterOpen} onClose={() => setIsFilterOpen(false)}>
-        <Stack gap="lg">
-          <Title order={2}>Filtrar histórico</Title>
-          <Stack>
-            <Text size="sm" weight={600}>Status</Text>
-            <Checkbox label="Feitas" checked={draftStatuses.includes('done')} onChange={(checked) => toggleStatus('done', checked)} />
-            <Checkbox label="Não feitas" checked={draftStatuses.includes('notDone')} onChange={(checked) => toggleStatus('notDone', checked)} />
-            <Checkbox label="Pendentes encerradas automaticamente" checked={draftStatuses.includes('autoClosed')} onChange={(checked) => toggleStatus('autoClosed', checked)} />
-          </Stack>
-          <FormField label="Responsável">
-            <Select value={draftAssigneeId} onChange={setDraftAssigneeId} options={[{ value: 'all', label: 'Todos os usuários' }, ...users.map((user) => ({ value: user.id, label: user.name }))]} />
-          </FormField>
-          <Button isFullWidth disabled={draftStatuses.length === 0} onClick={() => { setFilters({ statuses: draftStatuses, assigneeId: draftAssigneeId }); setIsFilterOpen(false); if (showFilters) navigate(routes.management.previousDayDetails); }}>APLICAR FILTROS</Button>
-          <Button variant="secondary" isFullWidth onClick={() => { setDraftStatuses(allStatuses); setDraftAssigneeId('all'); setFilters({ statuses: allStatuses, assigneeId: 'all' }); setIsFilterOpen(false); if (showFilters) navigate(routes.management.previousDayDetails); }}>LIMPAR FILTROS</Button>
-        </Stack>
-      </BottomSheet>
     </Frame>
   );
 }
@@ -723,11 +659,12 @@ function PreviousDaySummaryView({ navigate }: { navigate: Navigate }) {
   const { data } = useHistoryDayQuery({ statuses: ['done', 'notDone', 'autoClosed'], assigneeId: 'all' });
   const attentionTasks = data?.tasks.filter((task) => task.status !== 'done') ?? [];
   return (
-    <Frame title={dashboard?.previousDay.dateLabel ?? 'Dia anterior'} action="FILTRAR" onAction={() => navigate(routes.management.historyFilters)} backTo={routes.management.dashboard} navigate={navigate}>
+    <Frame title={dashboard?.previousDay.dateLabel ?? 'Dia anterior'} backTo={routes.management.dashboard} navigate={navigate}>
       <Stack gap="lg">
         <Group justify="space-between"><Text size="xs">{dashboard?.activeUnit.name ?? 'Unidade'}</Text><Text size="xs" tone="muted">{data ? `Encerrado ${data.closedAtLabel}` : 'Carregando…'}</Text></Group>
         {data && <SummaryMetrics values={[{ value: data.summary.done, label: 'feitas', tone: 'success' }, { value: data.summary.notDone, label: 'não feitas', tone: 'danger' }, { value: data.summary.total, label: 'total' }]} />}
         {data && data.summary.notDone > 0 && <Notice tone="danger"><Stack gap={2}><Text weight={700}>O dia fechou com {data.summary.notDone} tarefas não feitas</Text><Text size="sm">Revise os motivos informados pela equipe.</Text></Stack></Notice>}
+        <Button variant="secondary" onClick={() => navigate(routes.management.previousDayDetails)}>VER TODAS AS TAREFAS DO DIA</Button>
         <Title order={2}>Requer atenção</Title>
         {attentionTasks.length ? attentionTasks.map((task) => (
           <TaskCard key={task.id} title={task.title} status={task.status === 'autoClosed' ? 'Encerrada automaticamente' : 'Não feita'} tone="danger" due={task.timeLabel} assignee={task.assignee} onClick={() => { setSelectedHistoryTaskId(task.id); navigate(routes.management.previousDayTaskDetails); }} />

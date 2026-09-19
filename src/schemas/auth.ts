@@ -19,7 +19,7 @@ const usernameSchema = z
     loginValidationMessages.usernameInvalidCharacters,
   )
 
-const passwordSchema = z
+export const passwordSchema = z
   .string()
   .min(1, loginValidationMessages.passwordRequired)
   .min(
@@ -38,3 +38,13 @@ export const loginSchema = z.strictObject({
 
 export type LoginFormValues = z.input<typeof loginSchema>
 export type LoginCredentials = z.output<typeof loginSchema>
+
+export const changePasswordSchema = z.object({
+  currentPassword: passwordSchema,
+  newPassword: passwordSchema,
+  confirmPassword: passwordSchema,
+}).refine(value => value.newPassword === value.confirmPassword, {
+  message: 'As senhas não coincidem.', path: ['confirmPassword'],
+}).refine(value => value.newPassword !== value.currentPassword, {
+  message: 'Escolha uma senha diferente da atual.', path: ['newPassword'],
+})
